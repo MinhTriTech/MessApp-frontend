@@ -1,21 +1,24 @@
 import { useEffect } from "react";
 import { useState } from "react";
 import { fetchMessages } from "../services/messageService";
-import { socket } from "../services/socket";
+import { createSocket } from "../services/socket";
 
 export default function Chat ({ conversationId }) {
     const [messages, setMessages] = useState([]);
+    
+    const token = localStorage.getItem("token");
+    const socket = createSocket(token);
 
-    useEffect(() => {
-        if (!conversationId) return;
+    // useEffect(() => {
+    //     if (!conversationId) return;
 
-        const loadMessages = async () => {
-            const data = await fetchMessages(conversationId);
-            setMessages(data);
-        };
+    //     const loadMessages = async () => {
+    //         const data = await fetchMessages(conversationId);
+    //         setMessages(data);
+    //     };
 
-        loadMessages();
-    }, [conversationId]);
+    //     loadMessages();
+    // }, [conversationId]);
 
     useEffect(() => {
     // nhận message
@@ -30,11 +33,12 @@ export default function Chat ({ conversationId }) {
 
     return (
         <div>
-            {messages.map((msg) => (
+            {/* {messages.map((msg) => (
                 <div key={msg.id}>
                 <b>{msg.sender_id}</b>: {msg.content}
                 </div>
-            ))}
+            ))} */}
+            Chat 
         </div>
     );
 }

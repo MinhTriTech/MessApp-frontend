@@ -1,12 +1,23 @@
+import { useContext } from 'react';
 import './App.css'
-import Chat from './pages/Chat'
-import TestChat from './pages/TestChat'
+import Chat from './pages/Chat';
+import Login from './pages/Login'
+import Register from './pages/Register'
+import { AuthContext } from './context/AuthContext';
 
 function App() {
+  const { user } = useContext(AuthContext);
+
+  if (!user) return (
+    <div>
+      <Login />
+      <Register />
+    </div>
+  );
+
   return (
     <div>
-      <TestChat />
-      <Chat conversationId={5}/>
+      <Chat />
     </div>
   )
 }
