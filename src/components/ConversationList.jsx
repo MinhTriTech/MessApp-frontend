@@ -1,33 +1,15 @@
-import { useEffect, useState } from "react";
+import { useChat } from "../context/ChatContext";
 
 export default function ConversationList({ onSelect }) {
-  const [conversations, setConversations] = useState([]);
-
-  useEffect(() => {
-    fetch("http://localhost:8000/conversations", {
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem("token")}`
-      }
-    })
-      .then(res => res.json())
-      .then(setConversations);
-  }, []);
+  const { conversations } = useChat();
 
   return (
     <div>
       <h3 style={{ padding: "10px" }}>Conversations</h3>
-
-      {conversations.map((c) => (
-        <div
-          key={c.id}
-          onClick={() => onSelect(c.id)}
-          style={{
-            padding: "10px",
-            borderBottom: "1px solid #eee",
-            cursor: "pointer"
-          }}
-        >
-          Conversation #{c.id}
+      {conversations.map(c => (
+        <div key={c.conversation_id} onClick={() => onSelect(c.conversation_id)}>
+          <h4>{c.target_name}</h4>
+          <p>{c.last_message}</p>
         </div>
       ))}
     </div>

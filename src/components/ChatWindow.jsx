@@ -1,36 +1,15 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { createSocket } from "../services/socket";
+import { useChat } from "../context/ChatContext";
 
 export default function ChatWindow({ conversationId }) {
-  const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
 
   const token = localStorage.getItem("token");
   const socket = createSocket(token);
 
-  // Load messages
-  useEffect(() => {
-    if (!conversationId) return;
+  const { messages } = useChat();
 
-    fetch(`http://localhost:8000/messages/${conversationId}`)
-      .then(res => res.json())
-      .then(setMessages);
-
-    socket.emit("join_conversation", conversationId);
-
-    return () => {
-      setMessages([]); // clear khi đổi room
-    };
-  }, [conversationId]);
-
-  // Receive realtime
-  useEffect(() => {
-    socket.on("receive_message", (msg) => {
-      setMessages(prev => [...prev, msg]);
-    });
-
-    return () => socket.off("receive_message");
-  }, []);
 
   const handleSend = () => {
     if (!input.trim()) return;
