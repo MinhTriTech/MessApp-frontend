@@ -7,12 +7,14 @@ export const ChatProvider = ({ children }) => {
     const [conversations, setConversations] = useState([]);
     const [messages, setMessages] = useState([]);
     const [currentConversationId, setCurrentConversationId] = useState(null);
+    const [typingUsers, setTypingUsers] = useState([]);
 
     const socketRef = useRef();
     const currentConversationRef = useRef();
 
     const token = localStorage.getItem("token");
 
+    // Tạo socket
     useEffect(() => {
         socketRef.current = createSocket(token);
 
@@ -21,10 +23,12 @@ export const ChatProvider = ({ children }) => {
         };
     }, []);
 
+    // Gán conversation id cho useref
     useEffect(() => {
         currentConversationRef.current = currentConversationId;
     }, [currentConversationId]);
 
+    // Lấy danh sách conversation
     useEffect(() => {
         fetch("http://localhost:8000/conversations", {
             headers: {
@@ -35,10 +39,13 @@ export const ChatProvider = ({ children }) => {
         .then(setConversations);
     }, []);
 
+    // Lắng nghe socket (gửi nhận tin nhắn)
     useEffect(() => {
         const socket = socketRef.current;
 
         if (!currentConversationId) return;
+
+        setTypingUsers([]);
 
         socket.emit("join_conversation", currentConversationRef.current);
 
@@ -85,6 +92,57 @@ export const ChatProvider = ({ children }) => {
         };
     }, [currentConversationId]);
 
+    const sendMessage = (content) => {
+        const socket = socketRef.current;
+
+        if (!socket || !currentConversationRef.current || !content?.trim()) return;
+
+        socket.emit("send_message", {
+            conversation_id: currentConversationRef.current,
+            content: content.trim(),
+        });
+    };
+
+    const emitTyping = () => {
+        const socket = socketRef.current;
+
+        if (!socket || !currentConversationRef.current) return;
+
+        socket.emit("typing", {
+            conversationId: currentConversationRef.current,
+        });
+    };
+
+    const emitStopTyping = () => {
+        const socket = socketRef.current;
+
+        if (!socket || !currentConversationRef.current) return;
+
+        socket.emit("stop_typing", {
+            conversationId: currentConversationRef.current,
+        });
+    };
+
+    useEffect (() => {
+        const socket = socketRef.current;
+        
+        socket.on("typing", ({ userId }) => {
+            setTypingUsers(prev => {
+                if (prev.includes(userId)) return prev;
+                return [...prev, userId];
+            });
+        });
+
+        socket.on("stop_typing", ({ userId }) => {
+            setTypingUsers(prev => prev.filter(id => id !== userId));
+        });
+
+        return () => {
+            socket.off("typing");
+            socket.off("stop_typing");
+        }
+    }, []);
+
     return (
         <ChatContext.Provider
         value={{
@@ -94,6 +152,10 @@ export const ChatProvider = ({ children }) => {
             setMessages,
             currentConversationId,
             setCurrentConversationId,
+            typingUsers,
+            sendMessage,
+            emitTyping,
+            emitStopTyping,
         }}
         >
             {children}
