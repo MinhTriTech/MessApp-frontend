@@ -1,8 +1,8 @@
-import { useContext, useEffect, useRef, useState } from "react";
+import { forwardRef, useContext, useEffect, useRef, useState } from "react";
 import { useChat } from "../context/ChatContext";
 import { AuthContext } from "../context/AuthContext";
 
-export default function ChatWindow({ conversationId }) {
+const ChatWindow = forwardRef(function ChatWindow({ conversationId, onScroll }, messageListRef) {
   const { user } = useContext(AuthContext);
   const [input, setInput] = useState("");
 
@@ -85,7 +85,11 @@ export default function ChatWindow({ conversationId }) {
       )}
       
       {/* Message list */}
-      <div style={{ flex: 1, overflowY: "auto", padding: "10px" }}>
+      <div
+        ref={messageListRef}
+        onScroll={onScroll}
+        style={{ flex: 1, overflowY: "auto", padding: "10px" }}
+      >
         {messages.map((m) => (
           <div key={m.id} style={{ marginBottom: "10px" }}>
             {isSeen(m) && "✓✓ Seen "}
@@ -108,4 +112,6 @@ export default function ChatWindow({ conversationId }) {
 
     </div>
   );
-}
+});
+
+export default ChatWindow;

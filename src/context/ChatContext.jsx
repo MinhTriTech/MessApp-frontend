@@ -8,7 +8,14 @@ export const ChatProvider = ({ children }) => {
     const { user } = useContext(AuthContext);
 
     const [conversations, setConversations] = useState([]);
+
     const [messages, setMessages] = useState([]);
+    const [hasMore, setHasMore] = useState(true);
+    const [loadingMore, setLoadingMore] = useState(false);
+    const [cursor, setCursor] = useState(null);
+    const chatRef = useRef();
+    const lastScrollTopRef = useRef(0);
+
     const [currentConversationId, setCurrentConversationId] = useState(null);
     const [typingUsers, setTypingUsers] = useState([]);
 
@@ -57,13 +64,7 @@ export const ChatProvider = ({ children }) => {
 
         socket.emit("join_conversation", currentConversationRef.current);
 
-        fetch(`http://localhost:8000/messages/${currentConversationId}`, {
-            headers: {
-                Authorization: `Bearer ${localStorage.getItem("token")}`
-            }
-        })
-        .then(res => res.json())
-        .then(setMessages);
+        loadInitial(currentConversationId);
 
         const handleReceive = (msg) => {
             setMessages(prev => {
@@ -99,6 +100,75 @@ export const ChatProvider = ({ children }) => {
             setMessages([]); 
         };
     }, [currentConversationId]);
+
+    const loadInitial = async (currentConversationId) => {
+        const res = await fetch(`http://localhost:8000/messages/${currentConversationId}?limit=20`, {
+            headers: {
+                Authorization: `Bearer ${localStorage.getItem("token")}`
+            }
+        });
+
+        const data = await res.json();
+
+        const msgs = data.messages.reverse();
+
+        setMessages(msgs);
+        setHasMore(data.hasMore);
+        setCursor(msgs.length > 0 ? msgs[0].created_at : null);
+
+        requestAnimationFrame(() => {
+            const el = chatRef.current;
+            if (!el) return;
+            el.scrollTop = el.scrollHeight;
+            lastScrollTopRef.current = el.scrollTop;
+        });
+    };
+
+    const loadMore = async () => {
+        if (!hasMore || loadingMore || !cursor) return;
+
+        const el = chatRef.current;
+        const previousScrollHeight = el?.scrollHeight ?? 0;
+
+        setLoadingMore(true);
+
+        const res = await fetch(`http://localhost:8000/messages/${currentConversationId}?before=${cursor}&limit=20`, {
+            headers: {
+                Authorization: `Bearer ${localStorage.getItem("token")}`
+            }
+        });
+
+        const data = await res.json();
+        const newMsgs = data.messages.reverse();
+
+        setMessages(prev => [...newMsgs, ...prev]);
+        setHasMore(data.hasMore);
+
+        if (newMsgs.length > 0) {
+            setCursor(newMsgs[0].created_at);
+        }
+
+        if (el && newMsgs.length > 0) {
+            requestAnimationFrame(() => {
+                const newScrollHeight = el.scrollHeight;
+                el.scrollTop = newScrollHeight - previousScrollHeight;
+            });
+        }
+
+        setLoadingMore(false);
+    };
+
+    const handleScroll = (e) => {
+        const el = e.target;
+        const currentScrollTop = el.scrollTop;
+        const isScrollingUp = currentScrollTop < lastScrollTopRef.current;
+
+        if (isScrollingUp && currentScrollTop <= 10 && hasMore && !loadingMore) {
+            loadMore();
+        }
+
+        lastScrollTopRef.current = currentScrollTop;
+    };
 
     const sendMessage = (content) => {
         const socket = socketRef.current;
@@ -238,6 +308,8 @@ export const ChatProvider = ({ children }) => {
             emitTyping,
             emitStopTyping,
             emitSeenMessage,
+            chatRef,
+            handleScroll,
         }}
         >
             {children}
