@@ -1,4 +1,4 @@
-import { createContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 
 export const AuthContext = createContext();
 
@@ -7,22 +7,26 @@ export function AuthProvider({ children }) {
 
     useEffect(() => {
         const token = localStorage.getItem("token");
-
         if (!token) return;
 
-        fetch("http://localhost:8000/me", {
-            headers: {
-                Authorization: `Bearer ${token}`
-            }
-        })
-        .then(res => res.json())
-        .then(data => setUser(data));
-        
+        try {
+            fetch("http://localhost:8000/auth/getMe", {
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            })
+            .then(res => res.json())
+            .then(data => setUser(data));
+        } catch (error) {
+            localStorage.removeItem("token");
+        }
     }, []);
 
     return (
-        <AuthContext.Provider value={{ user }}>
+        <AuthContext.Provider value={{ user, setUser }}>
             {children}
         </AuthContext.Provider>
     );
 }
+
+export const useAuth = () => useContext(AuthContext);

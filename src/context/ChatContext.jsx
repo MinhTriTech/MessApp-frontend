@@ -36,17 +36,28 @@ export const ChatProvider = ({ children }) => {
         });
     };
 
-    // Tạo socket
+    // Tạo socket khi đã có token/user
     useEffect(() => {
-        socketRef.current = createSocket(token);
-        const socket = socketRef.current;
+        if (!token || !user?.id) {
+            if (socketRef.current) {
+                socketRef.current.disconnect();
+                socketRef.current = null;
+            }
+            return;
+        }
+
+        const socket = createSocket(token);
+        socketRef.current = socket;
 
         socket.emit("join_user_room");
 
         return () => {
             socket.disconnect();
+            if (socketRef.current === socket) {
+                socketRef.current = null;
+            }
         };
-    }, []);
+    }, [token, user?.id]);
 
     // Gán conversation id cho useref
     useEffect(() => {
@@ -54,22 +65,27 @@ export const ChatProvider = ({ children }) => {
         lastSeenEmittedMessageIdRef.current = null;
     }, [currentConversationId]);
 
-    // Lấy danh sách conversation
+    // Lấy danh sách conversation khi đã đăng nhập
     useEffect(() => {
+        if (!token || !user?.id) {
+            setConversations([]);
+            return;
+        }
+
         fetch("http://localhost:8000/conversations", {
             headers: {
-                Authorization: `Bearer ${localStorage.getItem("token")}`
+                Authorization: `Bearer ${token}`
             }
         })
         .then(res => res.json())
         .then(setConversations);
-    }, []);
+    }, [token, user?.id]);
 
     // Lắng nghe socket (gửi nhận tin nhắn)
     useEffect(() => {
         const socket = socketRef.current;
 
-        if (!currentConversationId) return;
+        if (!socket || !currentConversationId) return;
 
         setTypingUsers([]);
 
@@ -243,6 +259,8 @@ export const ChatProvider = ({ children }) => {
     // Lắng nghe socket (typing/ stop typing)
     useEffect (() => {
         const socket = socketRef.current;
+
+        if (!socket) return;
         
         socket.on("typing", ({ userId }) => {
             setTypingUsers(prev => {
@@ -264,6 +282,8 @@ export const ChatProvider = ({ children }) => {
     // Lắng nghe socket (seen tin nhắn)
     useEffect(() => {
         const socket = socketRef.current;
+
+        if (!socket) return;
 
         socket.on("message_seen", ({ messageId, userId }) => {
             setMessages(prev => 
@@ -287,6 +307,8 @@ export const ChatProvider = ({ children }) => {
     // Lắng nghe socket (tin nhắn global)
     useEffect(() => {
         const socket = socketRef.current;
+
+        if (!socket) return;
 
         socket.on("new_message", (msg) => {
             setConversations(prev => {

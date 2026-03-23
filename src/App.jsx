@@ -1,24 +1,62 @@
-import { useContext } from 'react';
 import './App.css'
+import { Navigate, Route, Routes } from 'react-router-dom';
 import ChatPage from './pages/ChatPage';
-import Login from './pages/Login'
-import Register from './pages/Register'
-import { AuthContext } from './context/AuthContext';
+import VerifySuccessPage from './pages/VerifySuccessPage';
+import Login from './components/Login'
+import Register from './components/Register'
+import { useAuth } from './context/AuthContext';
+import OnboardingGate from './components/OnboardingGate';
 
-function App() {
-  const { user } = useContext(AuthContext);
+function ChatRoute() {
+  return (
+    <div className="app-shell">
+      <OnboardingGate />
+      <ChatPage />
+    </div>
+  );
+}
 
-  if (!user) return (
+function LoginRoute() {
+  return (
     <div className="auth-shell">
       <Login />
+    </div>
+  );
+}
+
+function RegisterRoute() {
+  return (
+    <div className="auth-shell">
       <Register />
     </div>
   );
+}
+
+function App() {
+  const { user } = useAuth();
 
   return (
-    <div className="app-shell">
-      <ChatPage />
-    </div>
+    <Routes>
+      {user ? (
+        <>
+          <Route path="/" element={<Navigate to="/chat" replace />} />
+          <Route path="/chat" element={<ChatRoute />} />
+          <Route path="/verify-success" element={<VerifySuccessPage />} />
+          <Route path="/login" element={<Navigate to="/chat" replace />} />
+          <Route path="/register" element={<Navigate to="/chat" replace />} />
+          <Route path="*" element={<Navigate to="/chat" replace />} />
+        </>
+      ) : (
+        <>
+          <Route path="/" element={<Navigate to="/login" replace />} />
+          <Route path="/login" element={<LoginRoute />} />
+          <Route path="/register" element={<RegisterRoute />} />
+          <Route path="/verify-success" element={<VerifySuccessPage />} />
+          <Route path="/chat" element={<Navigate to="/login" replace />} />
+          <Route path="*" element={<Navigate to="/login" replace />} />
+        </>
+      )}
+    </Routes>
   )
 }
 

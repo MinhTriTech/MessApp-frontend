@@ -35,6 +35,21 @@
   gap: 10px;
 }
 
+.auth-switch-text {
+  margin: 6px 0 0;
+  font-size: 14px;
+  color: #333;
+}
+
+.auth-switch-link {
+  color: #111;
+  font-weight: 700;
+}
+
+.auth-switch-link:hover {
+  text-decoration: underline;
+}
+
 .text-input {
   border: 2px solid #111;
   border-radius: 8px;
@@ -209,6 +224,44 @@
 
 .btn-file {
   min-width: 72px;
+}
+
+.onboarding-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(17, 17, 17, 0.35);
+  z-index: 20;
+}
+
+.onboarding-card {
+  width: 100%;
+  max-width: 420px;
+  border: 2px solid #111;
+  border-radius: 10px;
+  background: #fff;
+  padding: 18px;
+}
+
+.onboarding-content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.onboarding-text {
+  margin: 0;
+  font-size: 14px;
+  color: #333;
+}
+
+.onboarding-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 @media (max-width: 900px) {
