@@ -3,7 +3,6 @@ import OnboardingModal from "./OnboardingModal";
 
 const OnboardingGate = () => {
   const { user } = useAuth();
-  console.log(user);
 
   if (!user) return null;
 

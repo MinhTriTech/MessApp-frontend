@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { useChat } from "../context/ChatContext";
+import { useEffect } from "react";
 
 export default function ConversationList({ onSelect }) {
-  const { conversations } = useChat();
+  const { conversations, setGlobalSearchResults, setActiveSearchUser } = useChat();
 
   const [selectedId, setSelectedId] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -21,8 +22,62 @@ export default function ConversationList({ onSelect }) {
 
   const handleClick = (id) => {
     setSelectedId(id);
+    setActiveSearchUser(null);
+    setGlobalSearchResults([]);
     onSelect(id);
   };
+
+  const searchGlobal = async (keyword, signal) => {
+    const trimmedKeyword = keyword.trim();
+
+    if (!trimmedKeyword) {
+      setGlobalSearchResults([]);
+      return;
+    }
+
+    const res = await fetch(`http://localhost:8000/users/search?q=${encodeURIComponent(trimmedKeyword)}`, {
+        signal,
+        headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`
+        }
+    });
+
+    if (!res.ok) {
+      setGlobalSearchResults([]);
+      return;
+    }
+
+    const data = await res.json();
+
+    if (!Array.isArray(data)) {
+      setGlobalSearchResults([]);
+      return;
+    }
+
+    setGlobalSearchResults(data);
+  };
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    const timeout = setTimeout(() => {
+      if (searchTerm) {
+        searchGlobal(searchTerm, controller.signal).catch(() => {
+          if (!controller.signal.aborted) {
+            setGlobalSearchResults([]);
+          }
+        });
+      } else {
+        setGlobalSearchResults([]);
+        setActiveSearchUser(null);
+      }
+    }, 400);
+
+    return () => {
+      controller.abort();
+      clearTimeout(timeout);
+    };
+  }, [searchTerm, setActiveSearchUser, setGlobalSearchResults]);
 
   return (
     <div className="conversation-list">

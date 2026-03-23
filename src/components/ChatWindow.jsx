@@ -128,7 +128,21 @@ const ChatWindow = forwardRef(function ChatWindow({ conversationId, onScroll }, 
   const typingTimeoutRef = useRef(null);
   const isTypingRef = useRef(false);
 
-  const { messages, typingUsers, sendMessage, emitTyping, emitStopTyping, emitSeenMessage, participants } = useChat();
+  const {
+    messages,
+    typingUsers,
+    sendMessage,
+    emitTyping,
+    emitStopTyping,
+    emitSeenMessage,
+    participants,
+    globalSearchResults,
+    setGlobalSearchResults,
+    activeSearchUser,
+    setActiveSearchUser,
+    setCurrentConversationId,
+    conversations,
+  } = useChat();
 
   useEffect(() => {
     let isMounted = true;
@@ -188,10 +202,16 @@ const ChatWindow = forwardRef(function ChatWindow({ conversationId, onScroll }, 
     }, 1000);
   };
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!input.trim()) return;
 
-    sendMessage(input);
+    const isSent = await sendMessage(input, {
+      draftUserId: activeSearchUser?.id,
+    });
+
+    if (!isSent) {
+      return;
+    }
 
     if (typingTimeoutRef.current) {
       clearTimeout(typingTimeoutRef.current);
@@ -202,6 +222,23 @@ const ChatWindow = forwardRef(function ChatWindow({ conversationId, onScroll }, 
     }
 
     setInput("");
+  };
+
+  const handleSelectSearchUser = (targetUser) => {
+    const existingConversation = conversations.find(
+      (conversation) => conversation.target_id === targetUser.id,
+    );
+
+    if (existingConversation?.conversation_id) {
+      setActiveSearchUser(null);
+      setGlobalSearchResults([]);
+      setCurrentConversationId(existingConversation.conversation_id);
+      return;
+    }
+
+    setActiveSearchUser(targetUser);
+    setGlobalSearchResults([]);
+    setCurrentConversationId(null);
   };
 
   const handlePickFile = () => {
@@ -237,66 +274,97 @@ const ChatWindow = forwardRef(function ChatWindow({ conversationId, onScroll }, 
     return msg.sender_id === user?.id && msg.seenBy && msg.seenBy.length > 0;
   };
 
-  if (!conversationId) {
-    return <div className="chat-empty">Chọn cuộc hội thoại</div>;
-  }
-
   return (
     <div className="chat-window">
-      <div
-        ref={messageListRef}
-        onScroll={onScroll}
-        className="message-list"
-      >
-        {messages.map((m) => {
-          const sender = userMap[m.sender_id];
-
-          return (
-            <RoughMessageBubble
-              key={m.id}
-              message={m}
-              isMe={m.sender_id === user?.id}
-              isSeen={isSeen(m)}
-              sender={sender}
-              roughLib={roughLib}
-            />
-          );
-        })}
-      </div>
-
-      {typingUsers.length > 0 && (
-        <div className="typing-indicator">Ai đó đang soạn tin nhắn...</div>
+      {globalSearchResults.length > 0 && (
+        <div className="search-result-panel search-result-panel-full">
+          <div className="search-result-heading">Kết quả tìm user</div>
+          <div className="search-result-grid">
+            {globalSearchResults.map((resultUser) => (
+              <button
+                key={resultUser.id}
+                type="button"
+                className={`search-user-card ${activeSearchUser?.id === resultUser.id ? "active" : ""}`}
+                onClick={() => handleSelectSearchUser(resultUser)}
+              >
+                <div className="search-user-name">{resultUser.name}</div>
+                {resultUser.email && <div className="search-user-email">{resultUser.email}</div>}
+              </button>
+            ))}
+          </div>
+        </div>
       )}
 
-      <div className="message-input-row">
-        <input
-          value={input}
-          onChange={handleTyping}
-          className="text-input"
-          placeholder="Nhập tin nhắn..."
-        />
-        <input
-          ref={fileInputRef}
-          type="file"
-          className="file-input-hidden"
-          onChange={handleFileChange}
-        />
-        <button
-          onClick={handlePickFile}
-          className="btn btn-file"
-          type="button"
-          onMouseEnter={() => setIsFileButtonHovered(true)}
-          onMouseLeave={() => setIsFileButtonHovered(false)}
-        >
-          <img
-            src={isFileButtonHovered ? attachFileHoverIcon : attachFileIcon}
-            alt="Đính kèm file"
-          />
-        </button>
-        <button onClick={handleSend} className="btn">
-          Gửi
-        </button>
-      </div>
+      {globalSearchResults.length > 0 && (
+        <div className="chat-empty search-result-empty-note">Chọn một user để bắt đầu trò chuyện</div>
+      )}
+
+      {!conversationId && !activeSearchUser && globalSearchResults.length === 0 && (
+        <div className="chat-empty">Chọn cuộc hội thoại hoặc chọn 1 user từ kết quả tìm kiếm</div>
+      )}
+
+      {!conversationId && activeSearchUser && globalSearchResults.length === 0 && (
+        <div className="chat-empty">Đang chuẩn bị chat với {activeSearchUser.name}. Gửi tin nhắn đầu tiên để tạo phòng chat.</div>
+      )}
+
+      {globalSearchResults.length === 0 && (
+        <>
+          <div
+            ref={messageListRef}
+            onScroll={onScroll}
+            className="message-list"
+          >
+            {messages.map((m) => {
+              const sender = userMap[m.sender_id];
+
+              return (
+                <RoughMessageBubble
+                  key={m.id}
+                  message={m}
+                  isMe={m.sender_id === user?.id}
+                  isSeen={isSeen(m)}
+                  sender={sender || { name: "Unknown" }}
+                  roughLib={roughLib}
+                />
+              );
+            })}
+          </div>
+
+          {typingUsers.length > 0 && (
+            <div className="typing-indicator">Ai đó đang soạn tin nhắn...</div>
+          )}
+
+          <div className="message-input-row">
+            <input
+              value={input}
+              onChange={handleTyping}
+              className="text-input"
+              placeholder="Nhập tin nhắn..."
+            />
+            <input
+              ref={fileInputRef}
+              type="file"
+              className="file-input-hidden"
+              onChange={handleFileChange}
+            />
+            <button
+              onClick={handlePickFile}
+              className="btn btn-file"
+              type="button"
+              onMouseEnter={() => setIsFileButtonHovered(true)}
+              onMouseLeave={() => setIsFileButtonHovered(false)}
+            >
+              <img
+                src={isFileButtonHovered ? attachFileHoverIcon : attachFileIcon}
+                alt="Đính kèm file"
+              />
+            </button>
+            <button onClick={handleSend} className="btn">
+              Gửi
+            </button>
+          </div>
+        </>
+      )}
 
     </div>
   );

@@ -17,6 +17,8 @@ export const ChatProvider = ({ children }) => {
     const lastScrollTopRef = useRef(0);
 
     const [participants, setParticipants] = useState([]);
+    const [globalSearchResults, setGlobalSearchResults] = useState([]);
+    const [activeSearchUser, setActiveSearchUser] = useState(null);
 
     const [currentConversationId, setCurrentConversationId] = useState(null);
     const [typingUsers, setTypingUsers] = useState([]);
@@ -80,6 +82,12 @@ export const ChatProvider = ({ children }) => {
         .then(res => res.json())
         .then(setConversations);
     }, [token, user?.id]);
+
+    useEffect(() => {
+        if (currentConversationId) {
+            setActiveSearchUser(null);
+        }
+    }, [currentConversationId]);
 
     // Lắng nghe socket (gửi nhận tin nhắn)
     useEffect(() => {
@@ -159,6 +167,55 @@ export const ChatProvider = ({ children }) => {
         scrollToBottom();
     };
 
+    const refreshConversations = async () => {
+        if (!token) {
+            return;
+        }
+
+        const res = await fetch("http://localhost:8000/conversations", {
+            headers: {
+                Authorization: `Bearer ${token}`
+            }
+        });
+
+        if (!res.ok) {
+            return;
+        }
+
+        const data = await res.json();
+        setConversations(data);
+    };
+
+    const createConversation = async (receiveId) => {
+        if (!token || !receiveId) {
+            return null;
+        }
+
+        const res = await fetch("http://localhost:8000/conversations", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify({ receiveId })
+        });
+
+        if (!res.ok) {
+            return null;
+        }
+
+        const data = await res.json();
+        const createdConversationId = data.id;
+
+        if (!createdConversationId) {
+            return null;
+        }
+
+        await refreshConversations();
+
+        return createdConversationId;
+    };
+
     const loadMore = async () => {
         if (!hasMore || loadingMore || !cursor) return;
 
@@ -205,15 +262,38 @@ export const ChatProvider = ({ children }) => {
         lastScrollTopRef.current = currentScrollTop;
     };
 
-    const sendMessage = (content) => {
+    const sendMessage = async (content, options = {}) => {
         const socket = socketRef.current;
 
-        if (!socket || !currentConversationRef.current || !content?.trim()) return;
+        if (!socket || !content?.trim()) {
+            return false;
+        }
+
+        let conversationIdToSend = currentConversationRef.current;
+
+        if (!conversationIdToSend && options.draftUserId) {
+            const createdConversationId = await createConversation(options.draftUserId);
+
+            if (!createdConversationId) {
+                return false;
+            }
+
+            conversationIdToSend = createdConversationId;
+            currentConversationRef.current = createdConversationId;
+            setCurrentConversationId(createdConversationId);
+            socket.emit("join_conversation", createdConversationId);
+        }
+
+        if (!conversationIdToSend) {
+            return false;
+        }
 
         socket.emit("send_message", {
-            conversation_id: currentConversationRef.current,
+            conversation_id: conversationIdToSend,
             content: content.trim(),
         });
+
+        return true;
     };
 
     const emitTyping = () => {
@@ -352,6 +432,10 @@ export const ChatProvider = ({ children }) => {
             chatRef,
             handleScroll,
             participants,
+            globalSearchResults,
+            setGlobalSearchResults,
+            activeSearchUser,
+            setActiveSearchUser,
         }}
         >
             {children}
