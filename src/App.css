@@ -144,6 +144,15 @@
   margin-left: auto;
 }
 
+.message-row-fallback {
+  border: 2px solid #111;
+  background: #f7f7f7;
+}
+
+.message-row-fallback.me {
+  background: #e9f2ff;
+}
+
 .message-bubble-canvas {
   position: absolute;
   inset: 0;

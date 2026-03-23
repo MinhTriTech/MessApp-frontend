@@ -1,14 +1,27 @@
-import { forwardRef, useContext, useEffect, useMemo, useRef, useState } from "react";
-import rough from "roughjs/bundled/rough.esm.js";
+import { forwardRef, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useChat } from "../context/ChatContext";
 import { AuthContext } from "../context/AuthContext";
 
-function RoughMessageBubble({ message, isMe, isSeen, sender }) {
+let roughModulePromise;
+
+const loadRough = () => {
+  if (!roughModulePromise) {
+    roughModulePromise = import("roughjs/bundled/rough.esm.js").then((module) => module.default ?? module);
+  }
+
+  return roughModulePromise;
+};
+
+function RoughMessageBubble({ message, isMe, isSeen, sender, roughLib }) {
   const bubbleRef = useRef(null);
   const canvasRef = useRef(null);
 
   // Hiệu ứng cho mỗi tin nhắn
-  useEffect(() => {
+  useLayoutEffect(() => {
+    if (!roughLib) {
+      return;
+    }
+
     const drawBubble = () => {
       const bubbleElement = bubbleRef.current;
       const canvasElement = canvasRef.current;
@@ -35,7 +48,7 @@ function RoughMessageBubble({ message, isMe, isSeen, sender }) {
       context.setTransform(dpr, 0, 0, dpr, 0, 0);
       context.clearRect(0, 0, width, height);
 
-      const roughCanvas = rough.canvas(canvasElement);
+      const roughCanvas = roughLib.canvas(canvasElement);
       const fillColor = isMe ? "#dcebff" : "#f3e3ff";
       const stripeColor = isMe ? "#4f7faa" : "#8f6db3";
 
@@ -73,7 +86,21 @@ function RoughMessageBubble({ message, isMe, isSeen, sender }) {
         resizeObserver.disconnect();
       }
     };
-  }, [isMe, message.content, message.id]);
+  }, [isMe, message.content, message.id, roughLib]);
+
+  if (!roughLib) {
+    return (
+      <div className={`message-row ${isMe ? "me" : ""} message-row-fallback`} ref={bubbleRef}>
+        <div className="message-bubble-content">
+          <div className="message-meta">
+            {isSeen ? "✓✓ Seen • " : ""}
+            <b>{sender.name}</b>
+          </div>
+          <div className="message-content">{message.content}</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={`message-row ${isMe ? "me" : ""}`} ref={bubbleRef}>
@@ -92,11 +119,26 @@ function RoughMessageBubble({ message, isMe, isSeen, sender }) {
 const ChatWindow = forwardRef(function ChatWindow({ conversationId, onScroll }, messageListRef) {
   const { user } = useContext(AuthContext);
   const [input, setInput] = useState("");
+  const [roughLib, setRoughLib] = useState(null);
 
   const typingTimeoutRef = useRef(null);
   const isTypingRef = useRef(false);
 
   const { messages, typingUsers, sendMessage, emitTyping, emitStopTyping, emitSeenMessage, participants } = useChat();
+
+  useEffect(() => {
+    let isMounted = true;
+
+    loadRough().then((lib) => {
+      if (isMounted) {
+        setRoughLib(lib);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Typing status
   useEffect(() => {
@@ -193,9 +235,10 @@ const ChatWindow = forwardRef(function ChatWindow({ conversationId, onScroll }, 
               isMe={m.sender_id === user?.id}
               isSeen={isSeen(m)}
               sender={sender}
+              roughLib={roughLib}
             />
           );
-        })};
+        })}
       </div>
 
       {typingUsers.length > 0 && (

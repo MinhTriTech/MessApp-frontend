@@ -27,6 +27,15 @@ export const ChatProvider = ({ children }) => {
 
     const token = localStorage.getItem("token");
 
+    const scrollToBottom = () => {
+        requestAnimationFrame(() => {
+            const el = chatRef.current;
+            if (!el) return;
+            el.scrollTop = el.scrollHeight;
+            lastScrollTopRef.current = el.scrollTop;
+        });
+    };
+
     // Tạo socket
     useEffect(() => {
         socketRef.current = createSocket(token);
@@ -75,6 +84,10 @@ export const ChatProvider = ({ children }) => {
                 }
                 return prev;
             });
+
+            if (msg.conversation_id === currentConversationRef.current && msg.sender_id === user?.id) {
+                scrollToBottom();
+            }
     
             setConversations(prev => {
                 let updated = prev.map(c => 
@@ -102,7 +115,7 @@ export const ChatProvider = ({ children }) => {
             setMessages([]); 
             setParticipants([]); 
         };
-    }, [currentConversationId]);
+    }, [currentConversationId, user?.id]);
 
     const loadInitial = async (currentConversationId) => {
         const res = await fetch(`http://localhost:8000/messages/${currentConversationId}?limit=20`, {
@@ -127,12 +140,7 @@ export const ChatProvider = ({ children }) => {
         setHasMore(data.hasMore);
         setCursor(msgs.length > 0 ? msgs[0].created_at : null);
 
-        requestAnimationFrame(() => {
-            const el = chatRef.current;
-            if (!el) return;
-            el.scrollTop = el.scrollHeight;
-            lastScrollTopRef.current = el.scrollTop;
-        });
+        scrollToBottom();
     };
 
     const loadMore = async () => {
