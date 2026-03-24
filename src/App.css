@@ -106,11 +106,32 @@
   height: 100%;
 }
 
+.conversation-heading-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border-bottom: 2px solid #111;
+}
+
 .conversation-heading {
   margin: 0;
-  padding: 14px;
-  border-bottom: 2px solid #111;
   font-size: 18px;
+}
+
+.conversation-profile-btn {
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.conversation-profile-btn.active {
+  background: #111;
+  color: #fff;
 }
 
 .conversation-search-wrap {
@@ -153,6 +174,85 @@
   display: flex;
   flex-direction: column;
   height: 100%;
+}
+
+.profile-view-wrap {
+  flex: 1;
+  padding: 16px;
+  overflow: auto;
+  background: #fff;
+}
+
+.profile-view-card {
+  border: 2px solid #111;
+  border-radius: 10px;
+  background: #fff;
+  max-width: 760px;
+}
+
+.profile-view-header {
+  border-bottom: 2px solid #111;
+  padding: 12px 14px;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.profile-view-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  border-bottom: 1px solid #111;
+}
+
+.profile-view-avatar {
+  width: 54px;
+  height: 54px;
+  border: 2px solid #111;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 18px;
+}
+
+.profile-view-name {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.profile-view-handle {
+  font-size: 13px;
+  color: #333;
+}
+
+.profile-view-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  padding: 14px;
+}
+
+.profile-view-item {
+  border: 2px solid #111;
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.profile-view-item-full {
+  grid-column: span 2;
+}
+
+.profile-view-label {
+  font-size: 12px;
+  color: #333;
+  margin-bottom: 4px;
+}
+
+.profile-view-value {
+  font-size: 14px;
+  font-weight: 600;
 }
 
 .chat-empty {
@@ -436,5 +536,13 @@
 
   .search-result-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .profile-view-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-view-item-full {
+    grid-column: span 1;
   }
 }

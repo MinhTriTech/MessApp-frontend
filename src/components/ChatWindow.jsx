@@ -1,8 +1,11 @@
-import { forwardRef, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { forwardRef, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useChat } from "../context/ChatContext";
 import { AuthContext } from "../context/AuthContext";
-import attachFileIcon from "../assets/attach-file.png";
-import attachFileHoverIcon from "../assets/attach-file-hover.png";
+import RoughMessageBubble from "./chat/RoughMessageBubble";
+import ProfilePanel from "./chat/ProfilePanel";
+import SearchResultPanel from "./chat/SearchResultPanel";
+import ChatComposer from "./chat/ChatComposer";
+import ImagePreviewModal from "./chat/ImagePreviewModal";
 
 let roughModulePromise;
 
@@ -14,145 +17,10 @@ const loadRough = () => {
   return roughModulePromise;
 };
 
-function RoughMessageBubble({ message, isMe, isSeen, sender, roughLib, onPreviewImage }) {
-  const bubbleRef = useRef(null);
-  const canvasRef = useRef(null);
-
-  const fileUrl = message.file_url;
-  const fileType = message.file_type;
-  const fileName = message.file_name;
-  const hasFile = Boolean(fileUrl) || message.type === "file";
-  const isImageFile = Boolean(fileType?.startsWith("image/") && fileUrl);
-
-  const renderMessageContent = () => {
-    if (isImageFile) {
-      return (
-        <button
-          type="button"
-          className="image-message-button"
-          onClick={() => onPreviewImage?.({ url: fileUrl, name: fileName || "Hình ảnh" })}
-        >
-          <img src={fileUrl} alt={fileName || "Uploaded image"} className="message-image" loading="lazy" />
-        </button>
-      );
-    }
-
-    if (hasFile && fileUrl) {
-      return (
-        <a href={fileUrl} target="_blank" rel="noreferrer" className="file-message-link">
-          {fileName || "Xem tệp đính kèm"}
-        </a>
-      );
-    }
-
-    return <div className="message-content">{message.content}</div>;
-  };
-
-  // Hiệu ứng cho mỗi tin nhắn
-  useLayoutEffect(() => {
-    if (!roughLib) {
-      return;
-    }
-
-    const drawBubble = () => {
-      const bubbleElement = bubbleRef.current;
-      const canvasElement = canvasRef.current;
-
-      if (!bubbleElement || !canvasElement) {
-        return;
-      }
-
-      const rect = bubbleElement.getBoundingClientRect();
-      const width = Math.max(1, Math.floor(rect.width));
-      const height = Math.max(1, Math.floor(rect.height));
-      const dpr = window.devicePixelRatio || 1;
-
-      canvasElement.width = width * dpr;
-      canvasElement.height = height * dpr;
-      canvasElement.style.width = `${width}px`;
-      canvasElement.style.height = `${height}px`;
-
-      const context = canvasElement.getContext("2d");
-      if (!context) {
-        return;
-      }
-
-      context.setTransform(dpr, 0, 0, dpr, 0, 0);
-      context.clearRect(0, 0, width, height);
-
-      const roughCanvas = roughLib.canvas(canvasElement);
-      const fillColor = isMe ? "#dcebff" : "#f3e3ff";
-      const stripeColor = isMe ? "#4f7faa" : "#8f6db3";
-
-      roughCanvas.rectangle(1, 1, width - 2, height - 2, {
-        seed: Number(message.id) || undefined,
-        stroke: "#111",
-        strokeWidth: 1.6,
-        roughness: 1.3,
-        bowing: 1.2,
-        fill: fillColor,
-        fillStyle: "hachure",
-        hachureAngle: isMe ? -35 : 35,
-        hachureGap: 5,
-        fillWeight: 1.5,
-        strokeLineDash: [1, 0],
-        fillLineDash: [3, 2],
-        fillLineDashOffset: 2,
-        fillShapeRoughnessGain: 1,
-        fillStroke: stripeColor,
-      });
-    };
-
-    drawBubble();
-
-    let resizeObserver;
-    if (window.ResizeObserver && bubbleRef.current) {
-      resizeObserver = new ResizeObserver(() => {
-        drawBubble();
-      });
-      resizeObserver.observe(bubbleRef.current);
-    }
-
-    return () => {
-      if (resizeObserver) {
-        resizeObserver.disconnect();
-      }
-    };
-  }, [isMe, message.content, message.id, roughLib]);
-
-  if (!roughLib) {
-    return (
-      <div className={`message-row ${isMe ? "me" : ""} message-row-fallback`} ref={bubbleRef}>
-        <div className="message-bubble-content">
-          <div className="message-meta">
-            {isSeen ? "✓✓ Seen • " : ""}
-            <b>{sender.name}</b>
-          </div>
-          {renderMessageContent()}
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className={`message-row ${isMe ? "me" : ""}`} ref={bubbleRef}>
-      <canvas className="message-bubble-canvas" ref={canvasRef} />
-      <div className="message-bubble-content">
-        <div className="message-meta">
-          {isSeen ? "✓✓ Seen • " : ""}
-          <b>{sender.name}</b>
-        </div>
-        {renderMessageContent()}
-      </div>
-    </div>
-  );
-}
-
-const ChatWindow = forwardRef(function ChatWindow({ conversationId, onScroll }, messageListRef) {
+const ChatWindow = forwardRef(function ChatWindow({ conversationId, onScroll, showProfilePanel }, messageListRef) {
   const { user } = useContext(AuthContext);
   const [input, setInput] = useState("");
   const [roughLib, setRoughLib] = useState(null);
-  const [isFileButtonHovered, setIsFileButtonHovered] = useState(false);
   const [previewImage, setPreviewImage] = useState(null);
   const fileInputRef = useRef(null);
 
@@ -352,30 +220,17 @@ const ChatWindow = forwardRef(function ChatWindow({ conversationId, onScroll }, 
     return msg.sender_id === user?.id && msg.seenBy && msg.seenBy.length > 0;
   };
 
+  if (showProfilePanel) {
+    return <ProfilePanel user={user} />;
+  }
+
   return (
     <div className="chat-window">
-      {globalSearchResults.length > 0 && (
-        <div className="search-result-panel search-result-panel-full">
-          <div className="search-result-heading">Kết quả tìm user</div>
-          <div className="search-result-grid">
-            {globalSearchResults.map((resultUser) => (
-              <button
-                key={resultUser.id}
-                type="button"
-                className={`search-user-card ${activeSearchUser?.id === resultUser.id ? "active" : ""}`}
-                onClick={() => handleSelectSearchUser(resultUser)}
-              >
-                <div className="search-user-name">{resultUser.name}</div>
-                {resultUser.email && <div className="search-user-email">{resultUser.email}</div>}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {globalSearchResults.length > 0 && (
-        <div className="chat-empty search-result-empty-note">Chọn một user để bắt đầu trò chuyện</div>
-      )}
+      <SearchResultPanel
+        results={globalSearchResults}
+        activeSearchUser={activeSearchUser}
+        onSelectSearchUser={handleSelectSearchUser}
+      />
 
       {!conversationId && !activeSearchUser && globalSearchResults.length === 0 && (
         <div className="chat-empty">Chọn cuộc hội thoại hoặc chọn 1 user từ kết quả tìm kiếm</div>
@@ -413,45 +268,18 @@ const ChatWindow = forwardRef(function ChatWindow({ conversationId, onScroll }, 
             <div className="typing-indicator">Ai đó đang soạn tin nhắn...</div>
           )}
 
-          <div className="message-input-row">
-            <input
-              value={input}
-              onChange={handleTyping}
-              className="text-input"
-              placeholder="Nhập tin nhắn..."
-            />
-            <input
-              ref={fileInputRef}
-              type="file"
-              className="file-input-hidden"
-              onChange={handleFileChange}
-            />
-            <button
-              onClick={handlePickFile}
-              className="btn btn-file"
-              type="button"
-              onMouseEnter={() => setIsFileButtonHovered(true)}
-              onMouseLeave={() => setIsFileButtonHovered(false)}
-            >
-              <img
-                src={isFileButtonHovered ? attachFileHoverIcon : attachFileIcon}
-                alt="Đính kèm file"
-              />
-            </button>
-            <button onClick={handleSend} className="btn">
-              Gửi
-            </button>
-          </div>
+          <ChatComposer
+            input={input}
+            onInputChange={handleTyping}
+            onSend={handleSend}
+            fileInputRef={fileInputRef}
+            onFileChange={handleFileChange}
+            onPickFile={handlePickFile}
+          />
         </>
       )}
 
-      {previewImage && (
-        <div className="image-preview-overlay" onClick={() => setPreviewImage(null)}>
-          <div className="image-preview-bubble" onClick={(e) => e.stopPropagation()}>
-            <img src={previewImage.url} alt={previewImage.name} className="image-preview-image" />
-          </div>
-        </div>
-      )}
+      <ImagePreviewModal previewImage={previewImage} onClose={() => setPreviewImage(null)} />
 
     </div>
   );
