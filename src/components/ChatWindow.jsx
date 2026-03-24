@@ -5,6 +5,7 @@ import RoughMessageBubble from "./chat/RoughMessageBubble";
 import SearchResultPanel from "./chat/SearchResultPanel";
 import ChatComposer from "./chat/ChatComposer";
 import ImagePreviewModal from "./common/ImagePreviewModal";
+import { useNavigate } from "react-router-dom";
 
 let roughModulePromise;
 
@@ -17,6 +18,7 @@ const loadRough = () => {
 };
 
 const ChatWindow = forwardRef(function ChatWindow({ conversationId, onScroll }, messageListRef) {
+  const navigate = useNavigate();
   const { user } = useContext(AuthContext);
   const [input, setInput] = useState("");
   const [roughLib, setRoughLib] = useState(null);
@@ -41,6 +43,8 @@ const ChatWindow = forwardRef(function ChatWindow({ conversationId, onScroll }, 
     activeSearchUser,
     setActiveSearchUser,
     setCurrentConversationId,
+    pendingReceiverId,
+    setPendingReceiverId,
     conversations,
     setMessages,
   } = useChat();
@@ -107,7 +111,7 @@ const ChatWindow = forwardRef(function ChatWindow({ conversationId, onScroll }, 
     if (!input.trim()) return;
 
     const isSent = await sendMessage(input, {
-      draftUserId: activeSearchUser?.id,
+      draftUserId: pendingReceiverId || activeSearchUser?.id,
     });
 
     if (!isSent) {
@@ -133,13 +137,16 @@ const ChatWindow = forwardRef(function ChatWindow({ conversationId, onScroll }, 
     if (existingConversation?.conversation_id) {
       setActiveSearchUser(null);
       setGlobalSearchResults([]);
-      setCurrentConversationId(existingConversation.conversation_id);
+      setPendingReceiverId(null);
+      navigate(`/chat/${existingConversation.conversation_id}`);
       return;
     }
 
     setActiveSearchUser(targetUser);
+    setPendingReceiverId(targetUser.id);
     setGlobalSearchResults([]);
     setCurrentConversationId(null);
+    navigate("/chat");
   };
 
   const handlePickFile = () => {

@@ -9,7 +9,13 @@ export default function ProfilePage() {
   const { id: profileId } = useParams();
   const navigate = useNavigate();
   const { user, setUser } = useAuth();
-  const { setCurrentConversationId } = useChat();
+  const {
+    conversations,
+    setCurrentConversationId,
+    setActiveSearchUser,
+    setGlobalSearchResults,
+    setPendingReceiverId,
+  } = useChat();
 
   const [profileUser, setProfileUser] = useState(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
@@ -83,8 +89,7 @@ export default function ProfilePage() {
   }, [profileId]);
 
   const handleSelectConversation = (conversationId) => {
-    setCurrentConversationId(conversationId);
-    navigate("/chat");
+    navigate(`/chat/${conversationId}`);
   };
 
   const handleLogout = () => {
@@ -115,6 +120,41 @@ export default function ProfilePage() {
     });
   };
 
+  const handleMessageProfileUser = () => {
+    if (isMyProfile || !profileUser) {
+      return;
+    }
+
+    const targetId = profileUser.id || profileId;
+
+    if (!targetId) {
+      return;
+    }
+
+    const existingConversation = conversations.find(
+      (conversation) => String(conversation.target_id) === String(targetId),
+    );
+
+    if (existingConversation?.conversation_id) {
+      setActiveSearchUser(null);
+      setGlobalSearchResults([]);
+      setPendingReceiverId(null);
+      navigate(`/chat/${existingConversation.conversation_id}`);
+      return;
+    }
+
+    setCurrentConversationId(null);
+    setGlobalSearchResults([]);
+    setPendingReceiverId(targetId);
+    setActiveSearchUser({
+      id: targetId,
+      name: profileUser.name,
+      email: profileUser.email,
+      avatar: profileUser.avatar_url || profileUser.avatar || profileUser.profile_image || "",
+    });
+    navigate("/chat");
+  };
+
   return (
     <>
       <div className="chat-layout">
@@ -129,6 +169,7 @@ export default function ProfilePage() {
             loading={isLoadingProfile}
             error={profileError}
             onProfileUpdated={isMyProfile ? handleProfileUpdated : undefined}
+            onStartMessage={!isMyProfile ? handleMessageProfileUser : undefined}
           />
         </div>
       </div>

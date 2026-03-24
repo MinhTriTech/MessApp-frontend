@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useChat } from "../context/ChatContext";
 import { useEffect } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import ProfileContextMenu from "./chat/ProfileContextMenu";
 
 const AVATAR_SIZE = 44;
@@ -97,6 +97,7 @@ export default function ConversationList({ onSelect }) {
   const { conversations, setGlobalSearchResults, setActiveSearchUser } = useChat();
   const navigate = useNavigate();
   const location = useLocation();
+  const { conversationId: conversationIdParam } = useParams();
 
   const [selectedId, setSelectedId] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -121,10 +122,10 @@ export default function ConversationList({ onSelect }) {
   });
 
   const handleClick = (id) => {
-    setSelectedId(id);
+    setSelectedId(String(id));
     setActiveSearchUser(null);
     setGlobalSearchResults([]);
-    onSelect(id);
+    onSelect?.(id);
   };
 
   const handleOpenProfile = () => {
@@ -203,6 +204,15 @@ export default function ConversationList({ onSelect }) {
   };
 
   useEffect(() => {
+    if (conversationIdParam) {
+      setSelectedId(String(conversationIdParam));
+      return;
+    }
+
+    setSelectedId(null);
+  }, [conversationIdParam, location.pathname]);
+
+  useEffect(() => {
     const controller = new AbortController();
 
     const timeout = setTimeout(() => {
@@ -214,7 +224,6 @@ export default function ConversationList({ onSelect }) {
         });
       } else {
         setGlobalSearchResults([]);
-        setActiveSearchUser(null);
       }
     }, 400);
 
@@ -266,7 +275,7 @@ export default function ConversationList({ onSelect }) {
             key={conv.conversation_id}
             onClick={() => handleClick(conv.conversation_id)}
             onContextMenu={(event) => handleConversationRightClick(event, conv.target_id)}
-            className={`conversation-item ${selectedId === conv.conversation_id ? "active" : ""}`}
+            className={`conversation-item ${String(selectedId) === String(conv.conversation_id) ? "active" : ""}`}
           >
             <div className="conversation-avatar-wrap">
               <div className="conversation-avatar-core" style={{ borderRadius: organicRadius }}>

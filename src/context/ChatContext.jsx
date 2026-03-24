@@ -19,6 +19,7 @@ export const ChatProvider = ({ children }) => {
     const [participants, setParticipants] = useState([]);
     const [globalSearchResults, setGlobalSearchResults] = useState([]);
     const [activeSearchUser, setActiveSearchUser] = useState(null);
+    const [pendingReceiverId, setPendingReceiverId] = useState(null);
 
     const [currentConversationId, setCurrentConversationId] = useState(null);
     const [typingUsers, setTypingUsers] = useState([]);
@@ -26,6 +27,7 @@ export const ChatProvider = ({ children }) => {
     const socketRef = useRef();
     const currentConversationRef = useRef();
     const lastSeenEmittedMessageIdRef = useRef(null);
+    const loadInitialRequestIdRef = useRef(0);
 
     const token = localStorage.getItem("token");
 
@@ -98,6 +100,7 @@ export const ChatProvider = ({ children }) => {
     useEffect(() => {
         if (currentConversationId) {
             setActiveSearchUser(null);
+            setPendingReceiverId(null);
         }
     }, [currentConversationId]);
 
@@ -105,13 +108,7 @@ export const ChatProvider = ({ children }) => {
     useEffect(() => {
         const socket = socketRef.current;
 
-        if (!socket || !currentConversationId) return;
-
-        setTypingUsers([]);
-
-        socket.emit("join_conversation", currentConversationRef.current);
-
-        loadInitial(currentConversationId);
+        if (!socket || !user?.id) return;
 
         const handleReceive = (msg) => {
             setMessages((prev) => {
@@ -162,26 +159,45 @@ export const ChatProvider = ({ children }) => {
     
                 return updated;
             });
-        }
-    
+        };
+
         socket.on("receive_message", handleReceive);
 
         return () => {
-            socket.off("receive_message");
-            socket.emit("leave_conversation", currentConversationRef.current);
+            socket.off("receive_message", handleReceive);
+        };
+    }, [token, user?.id]);
+
+    useEffect(() => {
+        const socket = socketRef.current;
+
+        if (!socket || !currentConversationId) return;
+
+        const joinedConversationId = currentConversationId;
+        const requestId = loadInitialRequestIdRef.current + 1;
+        loadInitialRequestIdRef.current = requestId;
+
+        setTypingUsers([]);
+
+        socket.emit("join_conversation", joinedConversationId);
+
+        loadInitial(joinedConversationId, requestId);
+
+        return () => {
+            socket.emit("leave_conversation", joinedConversationId);
             setMessages([]); 
             setParticipants([]); 
         };
     }, [currentConversationId, user?.id]);
 
-    const loadInitial = async (currentConversationId) => {
-        const res = await fetch(`http://localhost:8000/messages/${currentConversationId}?limit=20`, {
+    const loadInitial = async (conversationId, requestId) => {
+        const res = await fetch(`http://localhost:8000/messages/${conversationId}?limit=20`, {
             headers: {
                 Authorization: `Bearer ${localStorage.getItem("token")}`
             }
         });
 
-        const resParticipants = await fetch(`http://localhost:8000/conversations/${currentConversationId}/participants`, {
+        const resParticipants = await fetch(`http://localhost:8000/conversations/${conversationId}/participants`, {
             headers: {
                 Authorization: `Bearer ${localStorage.getItem("token")}`
             }
@@ -189,6 +205,10 @@ export const ChatProvider = ({ children }) => {
 
         const data = await res.json();
         const dataParticipants = await resParticipants.json();
+
+        if (requestId !== loadInitialRequestIdRef.current) {
+            return;
+        }
 
         const msgs = data.messages.reverse();
 
@@ -302,10 +322,13 @@ export const ChatProvider = ({ children }) => {
             return false;
         }
 
-        let conversationIdToSend = currentConversationRef.current;
+        const trimmedContent = content.trim();
 
-        if (!conversationIdToSend && options.draftUserId) {
-            const createdConversationId = await createConversation(options.draftUserId);
+        let conversationIdToSend = currentConversationRef.current;
+        const draftUserId = options.draftUserId || pendingReceiverId;
+
+        if (!conversationIdToSend && draftUserId) {
+            const createdConversationId = await createConversation(draftUserId);
 
             if (!createdConversationId) {
                 return false;
@@ -314,6 +337,7 @@ export const ChatProvider = ({ children }) => {
             conversationIdToSend = createdConversationId;
             currentConversationRef.current = createdConversationId;
             setCurrentConversationId(createdConversationId);
+            setPendingReceiverId(null);
             socket.emit("join_conversation", createdConversationId);
         }
 
@@ -321,9 +345,28 @@ export const ChatProvider = ({ children }) => {
             return false;
         }
 
+        const clientTempId = `temp_text_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+        const pendingMessage = {
+            id: clientTempId,
+            client_temp_id: clientTempId,
+            conversation_id: conversationIdToSend,
+            sender_id: user?.id,
+            content: trimmedContent,
+            type: "text",
+            created_at: new Date().toISOString(),
+            pending: true,
+            seenBy: [],
+        };
+
+        if (String(conversationIdToSend) === String(currentConversationRef.current)) {
+            setMessages((prev) => [...prev, pendingMessage]);
+            scrollToBottom();
+        }
+
         socket.emit("send_message", {
             conversation_id: conversationIdToSend,
-            content: content.trim(),
+            content: trimmedContent,
+            client_temp_id: clientTempId,
         });
 
         return true;
@@ -469,6 +512,8 @@ export const ChatProvider = ({ children }) => {
             setGlobalSearchResults,
             activeSearchUser,
             setActiveSearchUser,
+            pendingReceiverId,
+            setPendingReceiverId,
         }}
         >
             {children}

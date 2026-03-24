@@ -51,6 +51,7 @@ function App() {
         <>
           <Route path="/" element={<Navigate to="/chat" replace />} />
           <Route path="/chat" element={<ChatRoute />} />
+          <Route path="/chat/:conversationId" element={<ChatRoute />} />
           <Route path="/profile" element={<ProfileRoute />} />
           <Route path="/profile/:id" element={<ProfileRoute />} />
           <Route path="/verify-success" element={<VerifySuccessPage />} />
@@ -65,6 +66,7 @@ function App() {
           <Route path="/register" element={<RegisterRoute />} />
           <Route path="/verify-success" element={<VerifySuccessPage />} />
           <Route path="/chat" element={<Navigate to="/login" replace />} />
+          <Route path="/chat/:conversationId" element={<Navigate to="/login" replace />} />
           <Route path="/profile" element={<Navigate to="/login" replace />} />
           <Route path="/profile/:id" element={<Navigate to="/login" replace />} />
           <Route path="*" element={<Navigate to="/login" replace />} />

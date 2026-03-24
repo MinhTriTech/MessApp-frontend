@@ -180,6 +180,22 @@ export default function SearchResultPanel({ results, activeSearchUser, onSelectS
     closeContextMenu();
   };
 
+  const handleStartMessage = () => {
+    if (!contextMenuState.targetId) {
+      return;
+    }
+
+    const targetUser = results.find((resultUser) => resultUser.id === contextMenuState.targetId);
+
+    if (!targetUser) {
+      closeContextMenu();
+      return;
+    }
+
+    onSelectSearchUser(targetUser);
+    closeContextMenu();
+  };
+
   return (
     <>
       <div className="search-result-panel search-result-panel-full">
@@ -202,7 +218,7 @@ export default function SearchResultPanel({ results, activeSearchUser, onSelectS
                       }
                     : undefined
                 }
-                onClick={() => onSelectSearchUser(resultUser)}
+                onClick={() => navigate(`/profile/${resultUser.id}`)}
                 onContextMenu={(event) => handleRightClick(event, resultUser.id)}
               >
                 {avatarUrl && <span className="search-user-card-backdrop" aria-hidden="true" />}
@@ -224,6 +240,7 @@ export default function SearchResultPanel({ results, activeSearchUser, onSelectS
         y={contextMenuState.y}
         onClose={closeContextMenu}
         onOpenProfile={handleOpenTargetProfile}
+        onStartMessage={handleStartMessage}
       />
     </>
   );

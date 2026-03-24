@@ -344,6 +344,11 @@
   gap: 10px;
 }
 
+.profile-view-message-btn {
+  width: 100%;
+  max-width: 300px;
+}
+
 .profile-view-avatar-wrap {
   width: 100%;
   height: 100%;

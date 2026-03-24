@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 
-export default function ProfileContextMenu({ open, x, y, onClose, onOpenProfile }) {
+export default function ProfileContextMenu({ open, x, y, onClose, onOpenProfile, onStartMessage }) {
   useEffect(() => {
     if (!open) {
       return undefined;
@@ -36,6 +36,11 @@ export default function ProfileContextMenu({ open, x, y, onClose, onOpenProfile 
       <button type="button" className="conversation-context-menu-item" onClick={onOpenProfile}>
         Xem trang cá nhân
       </button>
+      {typeof onStartMessage === "function" && (
+        <button type="button" className="conversation-context-menu-item" onClick={onStartMessage}>
+          Nhắn tin
+        </button>
+      )}
     </div>
   );
 }

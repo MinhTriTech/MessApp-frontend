@@ -72,7 +72,14 @@ const buildOrganicRadius = (seed) => {
   return `${p1.toFixed(1)}% ${p2.toFixed(1)}% ${p3.toFixed(1)}% ${p4.toFixed(1)}% / ${q1.toFixed(1)}% ${q2.toFixed(1)}% ${q3.toFixed(1)}% ${q4.toFixed(1)}%`;
 };
 
-export default function ProfilePanel({ user, readOnly = false, loading = false, error = "", onProfileUpdated }) {
+export default function ProfilePanel({
+  user,
+  readOnly = false,
+  loading = false,
+  error = "",
+  onProfileUpdated,
+  onStartMessage,
+}) {
   const initialProfile = useMemo(() => {
     const profileName = user?.name || "Bạn";
     const profileEmail = user?.email || "demo@mess.app";
@@ -244,7 +251,7 @@ export default function ProfilePanel({ user, readOnly = false, loading = false, 
     <div className="chat-window">
       <div className="profile-view-wrap">
         <div className="profile-view-card">
-          <div className="profile-view-header">Thông tin profile</div>
+          <div className="profile-view-header">Thông tin cá nhân</div>
 
           {loading && <div className="chat-empty">Đang tải thông tin user...</div>}
           {error && !loading && <div className="chat-empty">{error}</div>}
@@ -322,6 +329,16 @@ export default function ProfilePanel({ user, readOnly = false, loading = false, 
                       />
                     )}
                   </div>
+
+                  {readOnly && typeof onStartMessage === "function" && (
+                    <button
+                      type="button"
+                      className="btn profile-view-message-btn"
+                      onClick={onStartMessage}
+                    >
+                      Nhắn tin
+                    </button>
+                  )}
                 </div>
               </div>
 
