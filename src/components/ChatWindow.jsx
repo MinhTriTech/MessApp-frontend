@@ -14,9 +14,39 @@ const loadRough = () => {
   return roughModulePromise;
 };
 
-function RoughMessageBubble({ message, isMe, isSeen, sender, roughLib }) {
+function RoughMessageBubble({ message, isMe, isSeen, sender, roughLib, onPreviewImage }) {
   const bubbleRef = useRef(null);
   const canvasRef = useRef(null);
+
+  const fileUrl = message.file_url;
+  const fileType = message.file_type;
+  const fileName = message.file_name;
+  const hasFile = Boolean(fileUrl) || message.type === "file";
+  const isImageFile = Boolean(fileType?.startsWith("image/") && fileUrl);
+
+  const renderMessageContent = () => {
+    if (isImageFile) {
+      return (
+        <button
+          type="button"
+          className="image-message-button"
+          onClick={() => onPreviewImage?.({ url: fileUrl, name: fileName || "Hình ảnh" })}
+        >
+          <img src={fileUrl} alt={fileName || "Uploaded image"} className="message-image" loading="lazy" />
+        </button>
+      );
+    }
+
+    if (hasFile && fileUrl) {
+      return (
+        <a href={fileUrl} target="_blank" rel="noreferrer" className="file-message-link">
+          {fileName || "Xem tệp đính kèm"}
+        </a>
+      );
+    }
+
+    return <div className="message-content">{message.content}</div>;
+  };
 
   // Hiệu ứng cho mỗi tin nhắn
   useLayoutEffect(() => {
@@ -98,7 +128,7 @@ function RoughMessageBubble({ message, isMe, isSeen, sender, roughLib }) {
             {isSeen ? "✓✓ Seen • " : ""}
             <b>{sender.name}</b>
           </div>
-          <div className="message-content">{message.content}</div>
+          {renderMessageContent()}
         </div>
       </div>
     );
@@ -112,7 +142,7 @@ function RoughMessageBubble({ message, isMe, isSeen, sender, roughLib }) {
           {isSeen ? "✓✓ Seen • " : ""}
           <b>{sender.name}</b>
         </div>
-        <div className="message-content">{message.content}</div>
+        {renderMessageContent()}
       </div>
     </div>
   );
@@ -123,10 +153,13 @@ const ChatWindow = forwardRef(function ChatWindow({ conversationId, onScroll }, 
   const [input, setInput] = useState("");
   const [roughLib, setRoughLib] = useState(null);
   const [isFileButtonHovered, setIsFileButtonHovered] = useState(false);
+  const [previewImage, setPreviewImage] = useState(null);
   const fileInputRef = useRef(null);
 
   const typingTimeoutRef = useRef(null);
   const isTypingRef = useRef(false);
+
+  const token = localStorage.getItem("token");
 
   const {
     messages,
@@ -142,6 +175,7 @@ const ChatWindow = forwardRef(function ChatWindow({ conversationId, onScroll }, 
     setActiveSearchUser,
     setCurrentConversationId,
     conversations,
+    setMessages,
   } = useChat();
 
   useEffect(() => {
@@ -164,6 +198,20 @@ const ChatWindow = forwardRef(function ChatWindow({ conversationId, onScroll }, 
       if (typingTimeoutRef.current) {
         clearTimeout(typingTimeoutRef.current);
       }
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleEsc = (event) => {
+      if (event.key === "Escape") {
+        setPreviewImage(null);
+      }
+    };
+
+    window.addEventListener("keydown", handleEsc);
+
+    return () => {
+      window.removeEventListener("keydown", handleEsc);
     };
   }, []);
 
@@ -249,14 +297,44 @@ const ChatWindow = forwardRef(function ChatWindow({ conversationId, onScroll }, 
     fileInputRef.current.click();
   };
 
-  const handleFileChange = (e) => {
+  const handleFileChange = async (e) => {
     const selectedFile = e.target.files?.[0];
 
     if (!selectedFile) {
       return;
     }
 
-    sendMessage(`[File] ${selectedFile.name}`);
+    if (!conversationId) {
+      e.target.value = "";
+      return;
+    }
+
+    if (!token) return;
+
+    const formData = new FormData();
+    formData.append("file", selectedFile);
+    formData.append("conversationId", conversationId);
+
+    const res = await fetch("http://localhost:8000/messages/uploads", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData
+    });
+
+    if (!res.ok) {
+      e.target.value = "";
+      return;
+    }
+
+    const data = await res.json();
+    const uploadedMessage = data?.message;
+
+    if (uploadedMessage?.id) {
+      setMessages((prev) => [...prev, uploadedMessage]);
+    }
+
     e.target.value = "";
   };
 
@@ -325,6 +403,7 @@ const ChatWindow = forwardRef(function ChatWindow({ conversationId, onScroll }, 
                   isSeen={isSeen(m)}
                   sender={sender || { name: "Unknown" }}
                   roughLib={roughLib}
+                  onPreviewImage={setPreviewImage}
                 />
               );
             })}
@@ -364,6 +443,14 @@ const ChatWindow = forwardRef(function ChatWindow({ conversationId, onScroll }, 
             </button>
           </div>
         </>
+      )}
+
+      {previewImage && (
+        <div className="image-preview-overlay" onClick={() => setPreviewImage(null)}>
+          <div className="image-preview-bubble" onClick={(e) => e.stopPropagation()}>
+            <img src={previewImage.url} alt={previewImage.name} className="image-preview-image" />
+          </div>
+        </div>
       )}
 
     </div>

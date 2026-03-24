@@ -99,7 +99,7 @@ export default function ConversationList({ onSelect }) {
         >
           <div className="conversation-name">{conv.target_name}</div>
           <div className="conversation-message">
-            {conv.last_message}
+            {conv.last_message === "" ? "[File]" : conv.last_message}
           </div>
         </div>
       ))}
