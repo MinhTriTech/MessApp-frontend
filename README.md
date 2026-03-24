@@ -22,6 +22,14 @@
 
 ---
 
+## 🔗 Repository liên quan
+
+| Repository | Mô tả |
+|---|---|
+| [MinhTriTech/MessApp-backend](https://github.com/MinhTriTech/MessApp-backend) | Máy chủ backend (API & Socket.IO) |
+
+---
+
 ## 🖼️ Giao diện
 
 | Trang Đăng nhập | Trang Chat | Trang Hồ sơ |
@@ -62,7 +70,7 @@
 
 - **Node.js** >= 18
 - **npm** >= 9
-- Backend **MessApp** đang chạy (mặc định tại `http://localhost:8000`)
+- Backend **MessApp** đang chạy (mặc định tại `http://localhost:8000`) – xem repo tại [MinhTriTech/MessApp-backend](https://github.com/MinhTriTech/MessApp-backend)
 
 ---
 
