@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import AvatarCropModal from "./AvatarCropModal";
 
 const hashString = (value) => {
@@ -71,7 +71,7 @@ const buildOrganicRadius = (seed) => {
   return `${p1.toFixed(1)}% ${p2.toFixed(1)}% ${p3.toFixed(1)}% ${p4.toFixed(1)}% / ${q1.toFixed(1)}% ${q2.toFixed(1)}% ${q3.toFixed(1)}% ${q4.toFixed(1)}%`;
 };
 
-export default function ProfilePanel({ user }) {
+export default function ProfilePanel({ user, readOnly = false, loading = false, error = "" }) {
   const initialProfile = useMemo(() => {
     const profileName = user?.name || "Bạn";
     const profileEmail = user?.email || "demo@mess.app";
@@ -80,7 +80,7 @@ export default function ProfilePanel({ user }) {
       name: profileName,
       email: profileEmail,
       avatar: user?.avatar_url || user?.avatar || user?.profile_image || "",
-      bio: "Xin chào! Đây là dữ liệu mock để preview giao diện profile trong ChatWindow.",
+      bio: user?.bio || "",
     };
   }, [user]);
 
@@ -88,6 +88,10 @@ export default function ProfilePanel({ user }) {
   const [cropSourceUrl, setCropSourceUrl] = useState("");
   const fileInputRef = useRef(null);
   const cropSourceObjectUrlRef = useRef(null);
+
+  useEffect(() => {
+    setDraftProfile(initialProfile);
+  }, [initialProfile]);
 
   const isDirty = useMemo(() => {
     return Object.keys(initialProfile).some((key) => draftProfile[key] !== initialProfile[key]);
@@ -122,6 +126,10 @@ export default function ProfilePanel({ user }) {
   };
 
   const handleAvatarChange = (event) => {
+    if (readOnly) {
+      return;
+    }
+
     const selectedFile = event.target.files?.[0];
 
     if (!selectedFile) {
@@ -149,6 +157,10 @@ export default function ProfilePanel({ user }) {
   };
 
   const handleApplyCroppedAvatar = (croppedAvatarUrl) => {
+    if (readOnly) {
+      return;
+    }
+
     setDraftProfile((prev) => ({
       ...prev,
       avatar: croppedAvatarUrl,
@@ -161,104 +173,120 @@ export default function ProfilePanel({ user }) {
     <div className="chat-window">
       <div className="profile-view-wrap">
         <div className="profile-view-card">
-          <div className="profile-view-header">Thông tin profile (mock)</div>
+          <div className="profile-view-header">Thông tin profile</div>
 
-          <div className="profile-view-main">
-            <div className="profile-view-identity">
-              <div className="profile-view-name">{draftProfile.name}</div>
-              <div className="profile-view-handle">{profileHandle}</div>
-              <div className="profile-view-email">{draftProfile.email}</div>
-            </div>
+          {loading && <div className="chat-empty">Đang tải thông tin user...</div>}
+          {error && !loading && <div className="chat-empty">{error}</div>}
 
-            <div className="profile-view-avatar-pane">
-              <div className="conversation-avatar-wrap profile-view-avatar-wrap">
-                <div className="conversation-avatar-core profile-view-avatar-core" style={{ borderRadius: avatarRadius }}>
-                  {draftProfile.avatar ? (
-                    <img
-                      src={draftProfile.avatar}
-                      alt="Avatar profile"
-                      className="conversation-avatar-image"
-                    />
-                  ) : (
-                    <span className="conversation-avatar-fallback">{profileInitials}</span>
-                  )}
-                  <button
-                    type="button"
-                    className="profile-view-avatar-overlay"
-                    onClick={() => fileInputRef.current?.click()}
-                    aria-label="Đổi ảnh đại diện"
-                    title="Đổi ảnh đại diện"
-                  >
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                      <path d="M15.23 5.26L18.74 8.77M9 20H5V16L15.23 5.77C15.5343 5.46573 15.8955 5.22437 16.293 5.05971C16.6905 4.89505 17.1165 4.8103 17.5468 4.8103C17.9771 4.8103 18.4031 4.89505 18.8006 5.05971C19.1981 5.22437 19.5593 5.46573 19.8636 5.77C20.1679 6.07427 20.4093 6.4355 20.5739 6.833C20.7386 7.2305 20.8233 7.65652 20.8233 8.0868C20.8233 8.51708 20.7386 8.94311 20.5739 9.34061C20.4093 9.73811 20.1679 10.0993 19.8636 10.4036L9 21.26" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  </button>
+          {!loading && !error && (
+            <>
+              <div className="profile-view-main">
+                <div className="profile-view-identity">
+                  <div className="profile-view-name">{draftProfile.name}</div>
+                  <div className="profile-view-handle">{profileHandle}</div>
+                  <div className="profile-view-email">{draftProfile.email}</div>
                 </div>
 
-                <svg
-                  className="conversation-avatar-outline"
-                  width="100%"
-                  height="100%"
-                  viewBox="0 0 48 48"
-                  aria-hidden="true"
-                >
-                  <path d={avatarOutlinePath} />
-                </svg>
+                <div className="profile-view-avatar-pane">
+                  <div className="conversation-avatar-wrap profile-view-avatar-wrap">
+                    <div className="conversation-avatar-core profile-view-avatar-core" style={{ borderRadius: avatarRadius }}>
+                      {draftProfile.avatar ? (
+                        <img
+                          src={draftProfile.avatar}
+                          alt="Avatar profile"
+                          className="conversation-avatar-image"
+                        />
+                      ) : (
+                        <span className="conversation-avatar-fallback">{profileInitials}</span>
+                      )}
 
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="profile-view-file-input"
-                  onChange={handleAvatarChange}
-                />
+                      {!readOnly && (
+                        <button
+                          type="button"
+                          className="profile-view-avatar-overlay"
+                          onClick={() => fileInputRef.current?.click()}
+                          aria-label="Đổi ảnh đại diện"
+                          title="Đổi ảnh đại diện"
+                        >
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <path d="M15.23 5.26L18.74 8.77M9 20H5V16L15.23 5.77C15.5343 5.46573 15.8955 5.22437 16.293 5.05971C16.6905 4.89505 17.1165 4.8103 17.5468 4.8103C17.9771 4.8103 18.4031 4.89505 18.8006 5.05971C19.1981 5.22437 19.5593 5.46573 19.8636 5.77C20.1679 6.07427 20.4093 6.4355 20.5739 6.833C20.7386 7.2305 20.8233 7.65652 20.8233 8.0868C20.8233 8.51708 20.7386 8.94311 20.5739 9.34061C20.4093 9.73811 20.1679 10.0993 19.8636 10.4036L9 21.26" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        </button>
+                      )}
+                    </div>
+
+                    <svg
+                      className="conversation-avatar-outline"
+                      width="100%"
+                      height="100%"
+                      viewBox="0 0 48 48"
+                      aria-hidden="true"
+                    >
+                      <path d={avatarOutlinePath} />
+                    </svg>
+
+                    {!readOnly && (
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        className="profile-view-file-input"
+                        onChange={handleAvatarChange}
+                      />
+                    )}
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
 
-          <div className="profile-view-grid">
-            <div className="profile-view-item">
-              <div className="profile-view-label">Tên hiển thị</div>
-              <input
-                className="text-input profile-view-input"
-                type="text"
-                value={draftProfile.name}
-                onChange={handleChange("name")}
-              />
-            </div>
+              <div className="profile-view-grid">
+                <div className="profile-view-item">
+                  <div className="profile-view-label">Tên hiển thị</div>
+                  <input
+                    className="text-input profile-view-input"
+                    type="text"
+                    value={draftProfile.name}
+                    onChange={handleChange("name")}
+                    disabled={readOnly}
+                  />
+                </div>
 
-            <div className="profile-view-item profile-view-item-full">
-              <div className="profile-view-label">Giới thiệu</div>
-              <textarea
-                className="text-input profile-view-input profile-view-textarea"
-                value={draftProfile.bio}
-                onChange={handleChange("bio")}
-              />
-            </div>
-          </div>
+                <div className="profile-view-item profile-view-item-full">
+                  <div className="profile-view-label">Giới thiệu</div>
+                  <textarea
+                    className="text-input profile-view-input profile-view-textarea"
+                    value={draftProfile.bio}
+                    onChange={handleChange("bio")}
+                    disabled={readOnly}
+                  />
+                </div>
+              </div>
 
-          <div className="profile-view-actions">
-            <div className="profile-view-actions-left">
-              <button
-                type="button"
-                className="btn"
-                onClick={handleReset}
-                disabled={!isDirty}
-              >
-                Reset
-              </button>
-            </div>
-            <div>
-              <button
-                type="button"
-                className="btn"
-                onClick={handleSave}
-                disabled={!isDirty}
-              >
-                Lưu
-              </button>
-            </div>
-          </div>
+              {!readOnly && (
+                <div className="profile-view-actions">
+                  <div className="profile-view-actions-left">
+                    <button
+                      type="button"
+                      className="btn"
+                      onClick={handleReset}
+                      disabled={!isDirty}
+                    >
+                      Reset
+                    </button>
+                  </div>
+                  <div>
+                    <button
+                      type="button"
+                      className="btn"
+                      onClick={handleSave}
+                      disabled={!isDirty}
+                    >
+                      Lưu
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
         </div>
       </div>
 

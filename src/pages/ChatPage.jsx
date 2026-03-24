@@ -3,16 +3,13 @@ import ConversationList from "../components/ConversationList";
 import { useChat } from "../context/ChatContext";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
-import { useState } from "react";
 
 export default function ChatPage () {
   const { currentConversationId, setCurrentConversationId, chatRef, handleScroll } = useChat();
   const { setUser } = useAuth();
   const navigate = useNavigate();
-  const [isProfileViewOpen, setIsProfileViewOpen] = useState(false);
 
   const handleSelectConversation = (conversationId) => {
-    setIsProfileViewOpen(false);
     setCurrentConversationId(conversationId);
   };
 
@@ -26,11 +23,7 @@ export default function ChatPage () {
     <>
       <div className="chat-layout">
         <div className="conversation-pane">
-          <ConversationList
-            onSelect={handleSelectConversation}
-            onToggleProfile={() => setIsProfileViewOpen((prev) => !prev)}
-            isProfileViewOpen={isProfileViewOpen}
-          />
+          <ConversationList onSelect={handleSelectConversation} />
         </div>
 
         <div className="chat-pane">
@@ -38,7 +31,6 @@ export default function ChatPage () {
             conversationId={currentConversationId}
             ref={chatRef}
             onScroll={handleScroll}
-            showProfilePanel={isProfileViewOpen}
           />
         </div>
       </div>

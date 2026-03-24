@@ -1,6 +1,7 @@
 import './App.css'
 import { Navigate, Route, Routes } from 'react-router-dom';
 import ChatPage from './pages/ChatPage';
+import ProfilePage from './pages/ProfilePage';
 import VerifySuccessPage from './pages/VerifySuccessPage';
 import Login from './components/Login'
 import Register from './components/Register'
@@ -12,6 +13,15 @@ function ChatRoute() {
     <div className="app-shell">
       <OnboardingGate />
       <ChatPage />
+    </div>
+  );
+}
+
+function ProfileRoute() {
+  return (
+    <div className="app-shell">
+      <OnboardingGate />
+      <ProfilePage />
     </div>
   );
 }
@@ -41,6 +51,8 @@ function App() {
         <>
           <Route path="/" element={<Navigate to="/chat" replace />} />
           <Route path="/chat" element={<ChatRoute />} />
+          <Route path="/profile" element={<ProfileRoute />} />
+          <Route path="/profile/:id" element={<ProfileRoute />} />
           <Route path="/verify-success" element={<VerifySuccessPage />} />
           <Route path="/login" element={<Navigate to="/chat" replace />} />
           <Route path="/register" element={<Navigate to="/chat" replace />} />
@@ -53,6 +65,8 @@ function App() {
           <Route path="/register" element={<RegisterRoute />} />
           <Route path="/verify-success" element={<VerifySuccessPage />} />
           <Route path="/chat" element={<Navigate to="/login" replace />} />
+          <Route path="/profile" element={<Navigate to="/login" replace />} />
+          <Route path="/profile/:id" element={<Navigate to="/login" replace />} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </>
       )}

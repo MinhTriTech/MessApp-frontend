@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useChat } from "../context/ChatContext";
 import { useEffect } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 
 const AVATAR_SIZE = 44;
 
@@ -91,11 +92,20 @@ const getInitials = (name) => {
   return `${tokens[0][0]}${tokens[tokens.length - 1][0]}`.toUpperCase();
 };
 
-export default function ConversationList({ onSelect, onToggleProfile, isProfileViewOpen }) {
+export default function ConversationList({ onSelect }) {
   const { conversations, setGlobalSearchResults, setActiveSearchUser } = useChat();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const [selectedId, setSelectedId] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [contextMenuState, setContextMenuState] = useState({
+    open: false,
+    x: 0,
+    y: 0,
+    targetId: null,
+  });
+  const isProfileRoute = location.pathname.startsWith("/profile");
 
   const normalizedSearch = searchTerm.trim().toLowerCase();
   const filteredConversations = conversations.filter((conv) => {
@@ -114,6 +124,33 @@ export default function ConversationList({ onSelect, onToggleProfile, isProfileV
     setActiveSearchUser(null);
     setGlobalSearchResults([]);
     onSelect(id);
+  };
+
+  const handleOpenProfile = () => {
+    navigate("/profile");
+  };
+
+  const handleOpenTargetProfile = () => {
+    if (!contextMenuState.targetId) {
+      return;
+    }
+
+    navigate(`/profile/${contextMenuState.targetId}`);
+    setContextMenuState((prev) => ({
+      ...prev,
+      open: false,
+    }));
+  };
+
+  const handleConversationRightClick = (event, targetId) => {
+    event.preventDefault();
+
+    setContextMenuState({
+      open: true,
+      x: event.clientX,
+      y: event.clientY,
+      targetId,
+    });
   };
 
   const getLastMess = (conversation) => {
@@ -173,14 +210,37 @@ export default function ConversationList({ onSelect, onToggleProfile, isProfileV
     };
   }, [searchTerm, setActiveSearchUser, setGlobalSearchResults]);
 
+  useEffect(() => {
+    const closeContextMenu = () => {
+      setContextMenuState((prev) => {
+        if (!prev.open) {
+          return prev;
+        }
+
+        return {
+          ...prev,
+          open: false,
+        };
+      });
+    };
+
+    window.addEventListener("click", closeContextMenu);
+    window.addEventListener("scroll", closeContextMenu, true);
+
+    return () => {
+      window.removeEventListener("click", closeContextMenu);
+      window.removeEventListener("scroll", closeContextMenu, true);
+    };
+  }, []);
+
   return (
     <div className="conversation-list">
       <div className="conversation-heading-row">
         <h3 className="conversation-heading">Tin nhắn</h3>
         <button
           type="button"
-          className={`btn conversation-profile-btn ${isProfileViewOpen ? "active" : ""}`}
-          onClick={onToggleProfile}
+          className={`btn conversation-profile-btn ${isProfileRoute ? "active" : ""}`}
+          onClick={handleOpenProfile}
           aria-label="Mở thông tin profile"
           title="Profile"
         >
@@ -215,6 +275,7 @@ export default function ConversationList({ onSelect, onToggleProfile, isProfileV
           <div
             key={conv.conversation_id}
             onClick={() => handleClick(conv.conversation_id)}
+            onContextMenu={(event) => handleConversationRightClick(event, conv.target_id)}
             className={`conversation-item ${selectedId === conv.conversation_id ? "active" : ""}`}
           >
             <div className="conversation-avatar-wrap">
@@ -251,6 +312,21 @@ export default function ConversationList({ onSelect, onToggleProfile, isProfileV
 
       {filteredConversations.length === 0 && (
         <div className="conversation-empty">Không tìm thấy hội thoại phù hợp</div>
+      )}
+
+      {contextMenuState.open && (
+        <div
+          className="conversation-context-menu"
+          style={{ top: contextMenuState.y, left: contextMenuState.x }}
+        >
+          <button
+            type="button"
+            className="conversation-context-menu-item"
+            onClick={handleOpenTargetProfile}
+          >
+            Xem trang cá nhân
+          </button>
+        </div>
       )}
     </div>
   );

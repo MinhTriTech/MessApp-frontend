@@ -2,7 +2,6 @@ import { forwardRef, useContext, useEffect, useMemo, useRef, useState } from "re
 import { useChat } from "../context/ChatContext";
 import { AuthContext } from "../context/AuthContext";
 import RoughMessageBubble from "./chat/RoughMessageBubble";
-import ProfilePanel from "./chat/ProfilePanel";
 import SearchResultPanel from "./chat/SearchResultPanel";
 import ChatComposer from "./chat/ChatComposer";
 import ImagePreviewModal from "./chat/ImagePreviewModal";
@@ -17,7 +16,7 @@ const loadRough = () => {
   return roughModulePromise;
 };
 
-const ChatWindow = forwardRef(function ChatWindow({ conversationId, onScroll, showProfilePanel }, messageListRef) {
+const ChatWindow = forwardRef(function ChatWindow({ conversationId, onScroll }, messageListRef) {
   const { user } = useContext(AuthContext);
   const [input, setInput] = useState("");
   const [roughLib, setRoughLib] = useState(null);
@@ -257,10 +256,6 @@ const ChatWindow = forwardRef(function ChatWindow({ conversationId, onScroll, sh
   const isSeen = (msg) => {
     return msg.sender_id === user?.id && msg.seenBy && msg.seenBy.length > 0;
   };
-
-  if (showProfilePanel) {
-    return <ProfilePanel user={user} />;
-  }
 
   return (
     <div className="chat-window">
