@@ -93,6 +93,28 @@ export default function ProfilePage() {
     navigate("/login", { replace: true });
   };
 
+  const handleProfileUpdated = (updatedData) => {
+    if (!updatedData) {
+      return;
+    }
+
+    setProfileUser((prev) => ({
+      ...prev,
+      ...updatedData,
+    }));
+
+    setUser((prev) => {
+      if (!prev) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        ...updatedData,
+      };
+    });
+  };
+
   return (
     <>
       <div className="chat-layout">
@@ -106,6 +128,7 @@ export default function ProfilePage() {
             readOnly={!isMyProfile}
             loading={isLoadingProfile}
             error={profileError}
+            onProfileUpdated={isMyProfile ? handleProfileUpdated : undefined}
           />
         </div>
       </div>

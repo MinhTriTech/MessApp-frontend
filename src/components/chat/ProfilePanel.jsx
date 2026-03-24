@@ -71,7 +71,7 @@ const buildOrganicRadius = (seed) => {
   return `${p1.toFixed(1)}% ${p2.toFixed(1)}% ${p3.toFixed(1)}% ${p4.toFixed(1)}% / ${q1.toFixed(1)}% ${q2.toFixed(1)}% ${q3.toFixed(1)}% ${q4.toFixed(1)}%`;
 };
 
-export default function ProfilePanel({ user, readOnly = false, loading = false, error = "" }) {
+export default function ProfilePanel({ user, readOnly = false, loading = false, error = "", onProfileUpdated }) {
   const initialProfile = useMemo(() => {
     const profileName = user?.name || "Bạn";
     const profileEmail = user?.email || "demo@mess.app";
@@ -80,22 +80,26 @@ export default function ProfilePanel({ user, readOnly = false, loading = false, 
       name: profileName,
       email: profileEmail,
       avatar: user?.avatar_url || user?.avatar || user?.profile_image || "",
-      bio: user?.bio || "",
+      bio: "",
     };
   }, [user]);
 
+  const [savedProfile, setSavedProfile] = useState(initialProfile);
   const [draftProfile, setDraftProfile] = useState(initialProfile);
   const [cropSourceUrl, setCropSourceUrl] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState("");
   const fileInputRef = useRef(null);
   const cropSourceObjectUrlRef = useRef(null);
 
   useEffect(() => {
+    setSavedProfile(initialProfile);
     setDraftProfile(initialProfile);
   }, [initialProfile]);
 
   const isDirty = useMemo(() => {
-    return Object.keys(initialProfile).some((key) => draftProfile[key] !== initialProfile[key]);
-  }, [draftProfile, initialProfile]);
+    return draftProfile.name !== savedProfile.name || draftProfile.avatar !== savedProfile.avatar;
+  }, [draftProfile.avatar, draftProfile.name, savedProfile.avatar, savedProfile.name]);
 
   const profileHandle = `@${draftProfile.email.split("@")[0] || "user"}`;
   const profileInitials = draftProfile.name
@@ -109,6 +113,7 @@ export default function ProfilePanel({ user, readOnly = false, loading = false, 
   const avatarRadius = useMemo(() => buildOrganicRadius(avatarSeed), [avatarSeed]);
 
   const handleChange = (field) => (event) => {
+    setSaveMessage("");
     setDraftProfile((prev) => ({
       ...prev,
       [field]: event.target.value,
@@ -116,12 +121,64 @@ export default function ProfilePanel({ user, readOnly = false, loading = false, 
   };
 
   const handleReset = () => {
-    setDraftProfile(initialProfile);
+    setSaveMessage("");
+    setDraftProfile(savedProfile);
   };
 
-  const handleSave = () => {
-    if (!isDirty) {
+  const handleSave = async () => {
+    if (!isDirty || isSaving) {
       return;
+    }
+
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      setSaveMessage("Bạn chưa đăng nhập.");
+      return;
+    }
+
+    setIsSaving(true);
+    setSaveMessage("");
+
+    try {
+      const formData = new FormData();
+      formData.append("name", draftProfile.name);
+
+      if (draftProfile.avatar && draftProfile.avatar.startsWith("data:image/")) {
+        const avatarResponse = await fetch(draftProfile.avatar);
+        const avatarBlob = await avatarResponse.blob();
+        formData.append("avatar", avatarBlob, `avatar-${Date.now()}.png`);
+      }
+
+      const res = await fetch("http://localhost:8000/auth/update", {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      if (!res.ok) {
+        setSaveMessage("Không thể lưu profile.");
+        return;
+      }
+
+      const updatedData = await res.json();
+      const nextProfile = {
+        ...savedProfile,
+        name: updatedData?.name ?? draftProfile.name,
+        avatar: updatedData?.avatar ?? draftProfile.avatar,
+        bio: "",
+      };
+
+      setSavedProfile(nextProfile);
+      setDraftProfile(nextProfile);
+      onProfileUpdated?.(updatedData);
+      setSaveMessage("Đã lưu profile.");
+    } catch {
+      setSaveMessage("Không thể lưu profile.");
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -165,6 +222,7 @@ export default function ProfilePanel({ user, readOnly = false, loading = false, 
       ...prev,
       avatar: croppedAvatarUrl,
     }));
+    setSaveMessage("");
 
     handleCloseCropModal();
   };
@@ -254,9 +312,8 @@ export default function ProfilePanel({ user, readOnly = false, loading = false, 
                   <div className="profile-view-label">Giới thiệu</div>
                   <textarea
                     className="text-input profile-view-input profile-view-textarea"
-                    value={draftProfile.bio}
-                    onChange={handleChange("bio")}
-                    disabled={readOnly}
+                    value=""
+                    disabled
                   />
                 </div>
               </div>
@@ -278,13 +335,15 @@ export default function ProfilePanel({ user, readOnly = false, loading = false, 
                       type="button"
                       className="btn"
                       onClick={handleSave}
-                      disabled={!isDirty}
+                      disabled={!isDirty || isSaving}
                     >
-                      Lưu
+                      {isSaving ? "Đang lưu..." : "Lưu"}
                     </button>
                   </div>
                 </div>
               )}
+
+              {!readOnly && saveMessage && <div className="conversation-empty">{saveMessage}</div>}
             </>
           )}
         </div>
