@@ -38,6 +38,18 @@ export const ChatProvider = ({ children }) => {
         });
     };
 
+    const getLastMessagePreview = (msg) => {
+        if (!msg) {
+            return "";
+        }
+
+        if (msg.type === "file") {
+            return msg.file_name ? `${msg.file_name}` : "Tệp đính kèm";
+        }
+
+        return msg.content;
+    };
+
     // Tạo socket khi đã có token/user
     useEffect(() => {
         if (!token || !user?.id) {
@@ -102,14 +114,35 @@ export const ChatProvider = ({ children }) => {
         loadInitial(currentConversationId);
 
         const handleReceive = (msg) => {
-            setMessages(prev => {
-                if (msg.conversation_id === currentConversationRef.current) {
-                    return [...prev, msg];
+            setMessages((prev) => {
+                if (String(msg.conversation_id) !== String(currentConversationRef.current)) {
+                    return prev;
                 }
-                return prev;
+
+                const pendingMessageIndex = msg.client_temp_id
+                    ? prev.findIndex(
+                        (message) => message.pending && message.client_temp_id === msg.client_temp_id,
+                    )
+                    : -1;
+
+                if (pendingMessageIndex >= 0) {
+                    const nextMessages = [...prev];
+                    nextMessages[pendingMessageIndex] = {
+                        ...msg,
+                        pending: false,
+                    };
+                    return nextMessages;
+                }
+
+                const alreadyExists = prev.some((message) => String(message.id) === String(msg.id));
+                if (alreadyExists) {
+                    return prev;
+                }
+
+                return [...prev, { ...msg, pending: false }];
             });
 
-            if (msg.conversation_id === currentConversationRef.current && msg.sender_id === user?.id) {
+            if (String(msg.conversation_id) === String(currentConversationRef.current) && msg.sender_id === user?.id) {
                 scrollToBottom();
             }
     
@@ -118,7 +151,7 @@ export const ChatProvider = ({ children }) => {
                     c.conversation_id === msg.conversation_id
                     ? {
                         ...c,
-                        last_message: msg.content,
+                        last_message: getLastMessagePreview(msg),
                         last_time: msg.created_at,
                     } : c
                 );
@@ -340,7 +373,7 @@ export const ChatProvider = ({ children }) => {
     useEffect (() => {
         const socket = socketRef.current;
 
-        if (!socket) return;
+        if (!socket || !user?.id) return;
         
         socket.on("typing", ({ userId }) => {
             setTypingUsers(prev => {
@@ -357,13 +390,13 @@ export const ChatProvider = ({ children }) => {
             socket.off("typing");
             socket.off("stop_typing");
         }
-    }, []);
+    }, [token, user?.id]);
 
     // Lắng nghe socket (seen tin nhắn)
     useEffect(() => {
         const socket = socketRef.current;
 
-        if (!socket) return;
+        if (!socket || !user?.id) return;
 
         socket.on("message_seen", ({ messageId, userId }) => {
             setMessages(prev => 
@@ -382,13 +415,13 @@ export const ChatProvider = ({ children }) => {
         return () => {
             socket.off("message_seen");
         };
-    }, []);
+    }, [token, user?.id]);
 
     // Lắng nghe socket (tin nhắn global)
     useEffect(() => {
         const socket = socketRef.current;
 
-        if (!socket) return;
+        if (!socket || !user?.id) return;
 
         socket.on("new_message", (msg) => {
             setConversations(prev => {
@@ -396,7 +429,7 @@ export const ChatProvider = ({ children }) => {
                     c.conversation_id === msg.conversation_id
                     ? {
                         ...c,
-                        last_message: msg.content,
+                        last_message: getLastMessagePreview(msg),
                         last_time: msg.created_at,
                     }
                     : c
@@ -413,7 +446,7 @@ export const ChatProvider = ({ children }) => {
         return () => {
             socket.off("new_message");
         };
-    }, []);
+    }, [token, user?.id]);
 
     return (
         <ChatContext.Provider

@@ -337,6 +337,10 @@
   overflow: hidden;
 }
 
+.message-row.pending {
+  opacity: 0.55;
+}
+
 .message-row.me {
   margin-left: auto;
 }
@@ -409,6 +413,17 @@
 .file-message-link:hover {
   background: #111;
   color: #fff;
+}
+
+.file-message-pending {
+  display: inline-block;
+  border: 2px dashed #111;
+  border-radius: 8px;
+  padding: 6px 10px;
+  background: #fff;
+  color: #333;
+  font-size: 13px;
+  font-weight: 600;
 }
 
 .image-preview-overlay {

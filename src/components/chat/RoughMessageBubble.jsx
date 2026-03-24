@@ -9,6 +9,7 @@ export default function RoughMessageBubble({ message, isMe, isSeen, sender, roug
   const fileName = message.file_name;
   const hasFile = Boolean(fileUrl) || message.type === "file";
   const isImageFile = Boolean(fileType?.startsWith("image/") && fileUrl);
+  const isPending = Boolean(message.pending);
 
   const renderMessageContent = () => {
     if (isImageFile) {
@@ -29,6 +30,10 @@ export default function RoughMessageBubble({ message, isMe, isSeen, sender, roug
           {fileName || "Xem tệp đính kèm"}
         </a>
       );
+    }
+
+    if (hasFile) {
+      return <div className="file-message-pending">{fileName || "Tệp đính kèm"} • Đang gửi...</div>;
     }
 
     return <div className="message-content">{message.content}</div>;
@@ -107,7 +112,7 @@ export default function RoughMessageBubble({ message, isMe, isSeen, sender, roug
 
   if (!roughLib) {
     return (
-      <div className={`message-row ${isMe ? "me" : ""} message-row-fallback`} ref={bubbleRef}>
+      <div className={`message-row ${isMe ? "me" : ""} ${isPending ? "pending" : ""} message-row-fallback`} ref={bubbleRef}>
         <div className="message-bubble-content">
           <div className="message-meta">
             {isSeen ? "✓✓ Seen • " : ""}
@@ -120,7 +125,7 @@ export default function RoughMessageBubble({ message, isMe, isSeen, sender, roug
   }
 
   return (
-    <div className={`message-row ${isMe ? "me" : ""}`} ref={bubbleRef}>
+    <div className={`message-row ${isMe ? "me" : ""} ${isPending ? "pending" : ""}`} ref={bubbleRef}>
       <canvas className="message-bubble-canvas" ref={canvasRef} />
       <div className="message-bubble-content">
         <div className="message-meta">

@@ -27,6 +27,11 @@ export default function ConversationList({ onSelect, onToggleProfile, isProfileV
     onSelect(id);
   };
 
+  const getLastMess = (conversation) => {
+    const lastMessage = (conversation?.last_message || "").trim();
+    return lastMessage || "Tệp đính kèm";
+  };
+
   const searchGlobal = async (keyword, signal) => {
     const trimmedKeyword = keyword.trim();
 
@@ -113,7 +118,7 @@ export default function ConversationList({ onSelect, onToggleProfile, isProfileV
         >
           <div className="conversation-name">{conv.target_name}</div>
           <div className="conversation-message">
-            {conv.last_message === "" ? "[File]" : conv.last_message}
+            {getLastMess(conv)}
           </div>
         </div>
       ))}

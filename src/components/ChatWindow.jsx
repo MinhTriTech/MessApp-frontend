@@ -179,31 +179,69 @@ const ChatWindow = forwardRef(function ChatWindow({ conversationId, onScroll, sh
 
     if (!token) return;
 
+    const clientTempId = `temp_file_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+    const pendingMessage = {
+      id: clientTempId,
+      client_temp_id: clientTempId,
+      conversation_id: conversationId,
+      sender_id: user?.id,
+      content: "",
+      type: "file",
+      file_name: selectedFile.name,
+      file_type: selectedFile.type,
+      file_url: "",
+      created_at: new Date().toISOString(),
+      pending: true,
+      seenBy: [],
+    };
+
+    setMessages((prev) => [...prev, pendingMessage]);
+
     const formData = new FormData();
     formData.append("file", selectedFile);
     formData.append("conversationId", conversationId);
+    formData.append("clientTempId", clientTempId);
 
-    const res = await fetch("http://localhost:8000/messages/uploads", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData
-    });
+    try {
+      const res = await fetch("http://localhost:8000/messages/uploads", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          body: formData
+      });
 
-    if (!res.ok) {
+      if (!res.ok) {
+        setMessages((prev) => prev.filter((message) => message.client_temp_id !== clientTempId));
+        e.target.value = "";
+        return;
+      }
+
+      const data = await res.json();
+      const uploadedMessage = data?.message;
+
+      if (uploadedMessage?.id) {
+        setMessages((prev) => {
+          const pendingIndex = prev.findIndex((message) => message.client_temp_id === clientTempId);
+
+          if (pendingIndex < 0) {
+            return prev;
+          }
+
+          const nextMessages = [...prev];
+          nextMessages[pendingIndex] = {
+            ...uploadedMessage,
+            pending: false,
+          };
+
+          return nextMessages;
+        });
+      }
+    } catch {
+      setMessages((prev) => prev.filter((message) => message.client_temp_id !== clientTempId));
+    } finally {
       e.target.value = "";
-      return;
     }
-
-    const data = await res.json();
-    const uploadedMessage = data?.message;
-
-    if (uploadedMessage?.id) {
-      setMessages((prev) => [...prev, uploadedMessage]);
-    }
-
-    e.target.value = "";
   };
 
   const userMap = useMemo(() => {
