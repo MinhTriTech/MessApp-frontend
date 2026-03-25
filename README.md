@@ -1,7 +1,7 @@
 <div align="center">
 
 <!-- Banner / Logo -->
-<img src="docs/images/banner.png" alt="MessApp Banner" width="100%" />
+<img src="docs/images/banner.png" alt="MessApp Banner" width="30%" />
 
 # MessApp – Frontend
 
@@ -19,6 +19,14 @@
 ## 📖 Giới thiệu
 
 **MessApp Frontend** là giao diện người dùng của ứng dụng nhắn tin thời gian thực **MessApp**, được xây dựng bằng **React 19** và **Vite 8**. Ứng dụng hỗ trợ đăng ký / đăng nhập, chat trực tiếp qua **Socket.IO**, quản lý hồ sơ cá nhân và nhiều tính năng tiện ích khác.
+
+---
+
+## 🔗 Repository liên quan
+
+| Repository | Mô tả |
+|---|---|
+| [MinhTriTech/MessApp-backend](https://github.com/MinhTriTech/MessApp-backend) | Máy chủ backend (API & Socket.IO) |
 
 ---
 
@@ -62,7 +70,7 @@
 
 - **Node.js** >= 18
 - **npm** >= 9
-- Backend **MessApp** đang chạy (mặc định tại `http://localhost:8000`)
+- Backend **MessApp** đang chạy (mặc định tại `http://localhost:8000`) – xem repo tại [MinhTriTech/MessApp-backend](https://github.com/MinhTriTech/MessApp-backend)
 
 ---
 
