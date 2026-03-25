@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import Button from "../common/Button";
+import Button from "./Button";
 
 const FRAME_SIZE_FALLBACK = 360;
 const MIN_ZOOM = 1;

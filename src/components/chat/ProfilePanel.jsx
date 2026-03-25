@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import AvatarCropModal from "./AvatarCropModal";
+import AvatarCropModal from "../common/AvatarCropModal";
 import ImagePreviewModal from "../common/ImagePreviewModal";
 import ConfirmationModal from "../common/ConfirmationModal";
 import TextInput from "../common/TextInput";
